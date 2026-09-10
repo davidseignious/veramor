@@ -8,7 +8,7 @@ const chemistrySb=createClient(
 
 let chemistryContext=null;
 let chemistryClock=null;
-const cEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 function cAge(date){if(!date)return '';const d=new Date(date+'T00:00:00'),n=new Date();let a=n.getFullYear()-d.getFullYear();if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))a--;return a>=18&&a<=100?a:''}
 async function cUser(){const {data:{session}}=await chemistrySb.auth.getSession();return session?.user||null}
 
@@ -68,6 +68,7 @@ async function openChemistryProfile(){
     ${intro?`<div class="panel"><span class="pill">PROFILE VIDEO</span><video class="vera-review-video" src="${cEsc(intro)}" controls playsinline preload="metadata"></video></div>`:''}
     ${insta.length?`<div class="panel"><div class="section-title" style="margin-top:0"><div><span class="pill">INSTAGRAM</span><h3 style="margin:7px 0 0">Recent photos</h3></div><span class="muted">Connected</span></div><div class="vera-ig-carousel">${insta.map(x=>`<a href="${cEsc(x.permalink||'#')}" ${x.permalink?'target="_blank" rel="noopener"':''}><img src="${cEsc(x.thumbnail_url||x.media_url||'')}" alt="Instagram photo"></a>`).join('')}</div></div>`:''}
     <div class="notice ok">Your Chemistry answer is still waiting behind this screen. Close this profile when you are ready to finish it.</div>`;
+  modal.classList.add('vera-review-open');
   modal.classList.remove('hidden');
 }
 
@@ -97,6 +98,7 @@ async function decorateMatchRows(){
 document.addEventListener('click',e=>{
   const row=e.target.closest?.('[data-match]');if(row){chemistryContext=null;resolveByIndex(Number(row.dataset.match)).catch(()=>{})}
   if(e.target.closest?.('#openNewMatch')){chemistryContext=null;setTimeout(()=>resolveByTitle().then(()=>decorateChemistry()).catch(()=>{}),180)}
+  if(e.target.closest?.('[data-close="profileModal"]'))document.getElementById('profileModal')?.classList.remove('vera-review-open');
 });
 
 window.addEventListener('load',()=>{
