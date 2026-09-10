@@ -84,10 +84,18 @@ function installScopeButtons(){
   document.getElementById('scopeInternational').onclick=()=>setScope(true);
   loadScope().catch(()=>{});
 }
+function loadExperienceModules(){
+  if(!document.querySelector('link[href="beta-experience.css"]')){
+    const link=document.createElement('link');link.rel='stylesheet';link.href='beta-experience.css';document.head.appendChild(link);
+  }
+  import('./beta-notifications.js').catch(e=>console.error('Notification module failed',e));
+  import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
+}
 
 window.addEventListener('load',()=>{
   configureAgeRange();
   installScopeButtons();
+  loadExperienceModules();
 });
 locationSb.auth.onAuthStateChange((event)=>{
   if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')loadScope().catch(()=>{});
