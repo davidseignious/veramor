@@ -15,6 +15,7 @@
     if(top&&gender&&!preview.querySelector('#approvedFilterBtn')){
       const b=document.createElement('button');b.id='approvedFilterBtn';b.className='approved-filter-trigger';b.type='button';b.setAttribute('aria-label','Discovery preferences');b.textContent='☷';
       top.appendChild(b);
+      top.appendChild(gender);
       gender.classList.add('approved-filter-popover');
       gender.insertAdjacentHTML('afterbegin','<div class="approved-filter-title"><span>DISCOVERY</span><b>Who do you want to see?</b></div>');
       b.onclick=function(e){e.stopPropagation();gender.classList.toggle('open')};
