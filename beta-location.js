@@ -90,6 +90,7 @@ function loadExperienceModules(){
   }
   import('./beta-notifications.js').catch(e=>console.error('Notification module failed',e));
   import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
+  import('./beta-instagram.js').catch(e=>console.error('Instagram module failed',e));
 }
 
 loadExperienceModules();
