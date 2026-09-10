@@ -92,10 +92,10 @@ function loadExperienceModules(){
   import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
 }
 
+loadExperienceModules();
 window.addEventListener('load',()=>{
   configureAgeRange();
   installScopeButtons();
-  loadExperienceModules();
 });
 locationSb.auth.onAuthStateChange((event)=>{
   if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')loadScope().catch(()=>{});
