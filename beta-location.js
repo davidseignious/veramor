@@ -84,14 +84,15 @@ function installScopeButtons(){
   document.getElementById('scopeInternational').onclick=()=>setScope(true);
   loadScope().catch(()=>{});
 }
+function ensureCss(href){if(document.querySelector(`link[href="${href}"]`))return;const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.appendChild(link)}
 function loadExperienceModules(){
-  if(!document.querySelector('link[href="beta-experience.css"]')){
-    const link=document.createElement('link');link.rel='stylesheet';link.href='beta-experience.css';document.head.appendChild(link);
-  }
+  ensureCss('beta-experience.css');
+  ensureCss('beta-live.css');
   import('./beta-notifications.js').catch(e=>console.error('Notification module failed',e));
   import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
   import('./beta-instagram.js').catch(e=>console.error('Instagram module failed',e));
   import('./beta-prompts.js').catch(e=>console.error('Prompt module failed',e));
+  import('./beta-live.js').catch(e=>console.error('Calls / Watch Together module failed',e));
 }
 
 loadExperienceModules();
