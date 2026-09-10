@@ -1,0 +1,19 @@
+/* VERAMOR University Mode */
+.campus-panel{position:relative;overflow:hidden;border:1px solid rgba(170,143,255,.26);background:linear-gradient(145deg,rgba(129,91,255,.13),rgba(255,255,255,.035))}
+.campus-panel:after{content:'🎓';position:absolute;right:-10px;top:-20px;font-size:92px;opacity:.07;transform:rotate(10deg);pointer-events:none}
+.campus-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.campus-head h3{margin:7px 0 0}
+.campus-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.campus-dot{width:9px;height:9px;border-radius:50%;background:#777;box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+.campus-dot.on{background:#75e3a6;box-shadow:0 0 0 4px rgba(117,227,166,.12)}
+.campus-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:14px}
+.campus-controls .field{margin:0}
+.campus-controls select{min-height:44px}
+.campus-profile-badge,.campus-profile-line{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(10,9,15,.78);border:1px solid rgba(185,161,255,.28);padding:7px 10px;font-size:12px;font-weight:800;backdrop-filter:blur(10px)}
+.campus-profile-badge{margin-top:9px}
+.campus-profile-line{margin:0 0 12px;color:#e8ddff}
+.campus-requires{font-size:12px;opacity:.72;margin-top:8px}
+.campus-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.campus-mini{padding:12px;border-radius:15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.campus-mini small{display:block;opacity:.58;margin-bottom:4px}.campus-mini b{font-size:14px}
+@media(max-width:600px){.campus-controls,.campus-settings-grid{grid-template-columns:1fr}.campus-head{align-items:center}}
