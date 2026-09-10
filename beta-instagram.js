@@ -48,7 +48,14 @@ async function syncInstagram(){const b=document.getElementById('igSync');b.disab
 async function disconnectInstagram(){if(!confirm('Disconnect Instagram from VERAMOR? The Instagram carousel will stop showing.'))return;const b=document.getElementById('igDisconnect');b.disabled=true;b.textContent='Disconnecting…';try{await igCall('disconnect');igStatus={configured:true,connected:false};renderPanel([])}catch(e){msg(e.message||'Could not disconnect Instagram.','bad');b.disabled=false;b.textContent='Disconnect'}}
 
 function watchProfile(){const host=document.getElementById('myProfile');if(!host)return;new MutationObserver(()=>setTimeout(()=>refreshInstagram().catch(()=>{}),50)).observe(host,{childList:true,subtree:false})}
-function handleReturn(){const q=new URLSearchParams(location.search);const state=q.get('instagram');if(!state)return;if(state==='connected')setTimeout(()=>refreshInstagram().then(()=>{const p=igPanel();if(p){p.classList.remove('hidden');p.scrollIntoView({behavior:'smooth',block:'center'})}}),250);else if(state==='error'){setTimeout(()=>{refreshInstagram().catch(()=>{});const p=igPanel();if(p&&!p.classList.contains('hidden')){const m=q.get('instagram_message')||'Instagram connection failed.';setTimeout(()=>msg(m,'bad'),50)}},250)}q.delete('instagram');q.delete('instagram_message');const next=q.toString()?`${location.pathname}?${q}`:location.pathname;history.replaceState({},'',next+location.hash)}
+function showProfileTab(){document.querySelector('#bottomNav button[data-view="profileView"]')?.click()}
+function handleReturn(){
+  const q=new URLSearchParams(location.search);const state=q.get('instagram');if(!state)return;
+  showProfileTab();
+  if(state==='connected')setTimeout(()=>refreshInstagram().then(()=>{const p=igPanel();if(p){p.classList.remove('hidden');p.scrollIntoView({behavior:'smooth',block:'center'});msg('Instagram connected. Your carousel is ready.','ok')}}),350);
+  else if(state==='error')setTimeout(()=>{refreshInstagram().catch(()=>{});const p=igPanel();if(p&&!p.classList.contains('hidden')){const m=q.get('instagram_message')||'Instagram connection failed.';setTimeout(()=>msg(m,'bad'),50)}},350);
+  q.delete('instagram');q.delete('instagram_message');const next=q.toString()?`${location.pathname}?${q}`:location.pathname;history.replaceState({},'',next);
+}
 
 window.addEventListener('load',()=>{watchProfile();handleReturn();refreshInstagram().catch(()=>{})});
 igSb.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')refreshInstagram().catch(()=>{});if(event==='SIGNED_OUT'){const p=igPanel();if(p)p.classList.add('hidden')}});
