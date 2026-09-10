@@ -37,7 +37,7 @@
       <h3>Your profile</h3>
       <div class="grid">
         <div class="field"><label>First name</label><input id="displayName" maxlength="50" required></div>
-        <div class="field"><label>Date of birth</label><input id="birthdate" type="date" required></div>
+        <div class="field"><label>Date of birth (18–100)</label><input id="birthdate" type="date" required></div>
         <div class="field"><label>Gender</label><select id="gender"><option value="">Choose</option><option>Woman</option><option>Man</option><option>Nonbinary</option><option value="Self-described">Self-described</option></select></div>
         <div class="field"><label>City</label><input id="city" maxlength="80" placeholder="Chicago" required></div>
         <div class="field"><label>Occupation <span class="muted">(optional)</span></label><input id="occupation" maxlength="80"></div>
@@ -85,6 +85,7 @@
     <section id="settingsView" class="appView hidden">
       <div class="section-title"><h2>Settings & safety</h2></div>
       <div class="panel"><label class="notice"><input id="discoveryToggle" type="checkbox" checked> Show me in discovery</label><p class="muted">Turning this off hides you from new discovery without deleting your matches.</p><button id="saveSettings" class="btn full">Save settings</button><div id="settingsMsg"></div></div>
+      <div class="panel"><h3>Discovery locations</h3><p class="muted"><strong>International Browse</strong> is free for every tier and only changes who you can browse. <strong>Travel Mode</strong> changes the location your account browses from and requires an active paid plan.</p></div>
       <div class="panel"><h3>Safety</h3><p class="muted">Block and report are available from profiles and conversations. Blocking immediately removes the connection from both sides.</p><p><a href="safety.html" target="_blank" style="color:#d5c8ff">Read beta safety rules</a></p></div>
       <div class="panel danger-zone"><h3>Delete account</h3><p class="muted">Permanently removes your account and private VERAMOR media. This cannot be undone.</p><button id="deleteAccount" class="btn danger full">Delete my account</button><div id="deleteMsg"></div></div>
     </section>
@@ -99,5 +100,6 @@
 
 <script type="module" src="beta.js"></script>
 <script type="module" src="beta-hardening.js"></script>
+<script type="module" src="beta-location.js"></script>
 </body>
 </html>
