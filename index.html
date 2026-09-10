@@ -8,18 +8,20 @@
 <script src="app.js"></script>
 <script src="chemistry-fix.js"></script>
 <script>
-// Demo-media mix: the three male demo profiles are photo-only for now.
+// Demo-media mix: keep one showcase video (Amina); all other demo profiles are photo-only.
 // Real user video support stays in app.js and still renders whenever a live profile has p.video.
 if (typeof demos !== 'undefined' && Array.isArray(demos)) {
-  const photoOnlyDemoMen = {
+  const photoOnlyDemoProfiles = {
+    m: 'https://res.cloudinary.com/hxnwueko/video/upload/so_0/v1788929170/veramor/maya-profile-final-clean.jpg',
+    n: 'https://res.cloudinary.com/hxnwueko/video/upload/so_0/v1788999350/veramor/nia-profile-clean.jpg',
     mar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=900&q=88&fit=crop&crop=faces',
     j: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=88&fit=crop&crop=faces',
     and: 'https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=900&q=88&fit=crop&crop=faces'
   };
   demos.forEach(function(profile){
-    if (photoOnlyDemoMen[profile.id]) {
+    if (photoOnlyDemoProfiles[profile.id]) {
       profile.video = '';
-      profile.photo = photoOnlyDemoMen[profile.id];
+      profile.photo = photoOnlyDemoProfiles[profile.id];
     }
   });
 }
