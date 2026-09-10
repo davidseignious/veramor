@@ -87,6 +87,7 @@ function installScopeButtons(){
 function ensureCss(href){if(document.querySelector(`link[href="${href}"]`))return;const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.appendChild(link)}
 function loadExperienceModules(){
   ensureCss('beta-experience.css');
+  ensureCss('beta-prompts.css');
   ensureCss('beta-live.css');
   import('./beta-notifications.js').catch(e=>console.error('Notification module failed',e));
   import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
