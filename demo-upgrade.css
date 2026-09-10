@@ -1,0 +1,17 @@
+/* VERAMOR admin preview polish for the 28-profile simulation pool */
+.demo-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:7px 10px 0}
+.demo-strip img{width:100%;height:88px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+.demo-photo-count{position:absolute;right:12px;bottom:12px;background:rgba(8,7,12,.78);backdrop-filter:blur(10px);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.demo-full-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px}
+.demo-full-gallery figure{margin:0;position:relative;overflow:hidden;border-radius:18px;background:#111}
+.demo-full-gallery img{width:100%;aspect-ratio:3/4;display:block;object-fit:cover}
+.demo-full-gallery figcaption{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.58);padding:5px 8px;border-radius:999px;font-size:11px}
+.demo-limit-card{max-width:620px;margin:30px auto;padding:34px 24px;text-align:center;border:1px solid rgba(255,255,255,.11);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));border-radius:28px;box-shadow:0 28px 80px rgba(0,0,0,.28)}
+.demo-limit-heart{font-size:60px;line-height:1;margin:22px 0 8px}
+.demo-limit-card h2{font-size:32px;margin:4px 0 8px}
+.demo-limit-card p{max-width:510px;margin:0 auto 22px;opacity:.78;line-height:1.55}
+.demo-limit-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.demo-limit-row>div{padding:16px;border-radius:18px;background:rgba(255,255,255,.05)}
+.demo-limit-row small{display:block;opacity:.6;font-size:10px;letter-spacing:.12em}
+.demo-limit-row b{display:block;font-size:22px;margin-top:4px}
+@media(max-width:560px){.demo-strip img{height:72px}.demo-full-gallery{grid-template-columns:1fr}.demo-limit-card h2{font-size:28px}}
