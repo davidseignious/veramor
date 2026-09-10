@@ -1,0 +1,4 @@
+/* University Mode preview for the VERAMOR owner simulation */
+.demo-campus-badge{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:7px 10px;border-radius:999px;border:1px solid rgba(184,160,255,.32);background:rgba(12,10,18,.78);font-size:12px;font-weight:800;backdrop-filter:blur(10px)}
+.demo-campus-banner{margin:10px 0 14px;padding:13px 14px;border-radius:16px;background:linear-gradient(135deg,rgba(130,92,255,.15),rgba(255,255,255,.04));border:1px solid rgba(184,160,255,.2)}
+.demo-campus-banner strong{display:block;margin-bottom:4px}.demo-campus-banner small{opacity:.68}
