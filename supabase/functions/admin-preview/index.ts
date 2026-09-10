@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const allowedOrigin=(origin:string|null)=>{
   if(!origin) return null;
+  if(origin==='https://veramor.vercel.app') return origin;
   if(origin==='https://veramor-app.netlify.app') return origin;
   if(/^https:\/\/[a-z0-9-]+--veramor-app\.netlify\.app$/i.test(origin)) return origin;
   if(/^https:\/\/veramor(?:-[a-z0-9-]+)?-ai-company4\.vercel\.app$/i.test(origin)) return origin;
