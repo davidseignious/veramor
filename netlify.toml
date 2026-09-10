@@ -12,6 +12,11 @@
   to = "/beta.html"
   status = 200
 
+[[redirects]]
+  from = "/profile-passport"
+  to = "/passport.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
