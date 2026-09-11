@@ -89,12 +89,14 @@ function loadExperienceModules(){
   ensureCss('beta-experience.css');
   ensureCss('beta-prompts.css');
   ensureCss('beta-live.css');
+  ensureCss('beta-legal-compliance.css?v=20260911-legal1');
   import('./beta-notifications.js').catch(e=>console.error('Notification module failed',e));
   import('./beta-chemistry-context.js').catch(e=>console.error('Chemistry context module failed',e));
   import('./beta-instagram.js').catch(e=>console.error('Instagram module failed',e));
   import('./beta-prompts.js').catch(e=>console.error('Prompt module failed',e));
   import('./beta-live.js').catch(e=>console.error('Calls / Watch Together module failed',e));
   import('./beta-feature-visibility.js').catch(e=>console.error('Match feature preview failed',e));
+  import('./beta-legal-compliance.js?v=20260911-legal1').catch(e=>console.error('Legal compliance module failed',e));
 }
 
 loadExperienceModules();
