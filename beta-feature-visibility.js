@@ -8,5 +8,15 @@ function installMatchFeaturePreview(){
   }
   if(!chemistry)document.getElementById('lockedMatchFeatures')?.remove();
 }
-function bootFeaturePreview(){const body=document.getElementById('matchModalBody');if(!body)return;new MutationObserver(()=>setTimeout(installMatchFeaturePreview,35)).observe(body,{childList:true,subtree:true});installMatchFeaturePreview()}
+function enforcePromptCopy(){
+  const panel=document.getElementById('promptEditorPanel');if(!panel)return;
+  const title=panel.querySelector('h3');if(title)title.textContent='Answer 3 prompts';
+  const intro=panel.querySelector('p.muted');if(intro)intro.textContent='Three completed prompts are required before your profile can enter discovery. Answers can be text, voice, or short video.';
+  const pill=panel.querySelector('.pill');if(pill)pill.textContent='PROMPTS · REQUIRED';
+}
+function bootFeaturePreview(){
+  const body=document.getElementById('matchModalBody');if(body)new MutationObserver(()=>setTimeout(installMatchFeaturePreview,35)).observe(body,{childList:true,subtree:true});
+  const onboarding=document.getElementById('onboardingScreen');if(onboarding)new MutationObserver(()=>setTimeout(enforcePromptCopy,25)).observe(onboarding,{childList:true,subtree:true});
+  installMatchFeaturePreview();enforcePromptCopy();setTimeout(enforcePromptCopy,250);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootFeaturePreview,{once:true});else bootFeaturePreview();
