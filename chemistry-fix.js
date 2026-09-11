@@ -2,6 +2,7 @@
   var CHEM_KEY='veramor_admin_chemistry_v3';
   var CHAT_KEY='veramor_admin_chats_v3';
   var DATE_KEY='veramor_admin_dates_v1';
+  var WATCH_KEY='veramor_admin_watch_v1';
 
   function readStore(key){try{return JSON.parse(localStorage.getItem(key)||'{}')||{}}catch(_){return {}}}
   function writeStore(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(_){}}
@@ -12,6 +13,8 @@
   function saveMessages(rows){var s=readStore(CHAT_KEY);s[matchId()]=rows;writeStore(CHAT_KEY,s)}
   function getDatePlan(){return readStore(DATE_KEY)[matchId()]||null}
   function saveDatePlan(plan){var s=readStore(DATE_KEY);s[matchId()]=plan;writeStore(DATE_KEY,s)}
+  function getWatchPlan(){return readStore(WATCH_KEY)[matchId()]||null}
+  function saveWatchPlan(plan){var s=readStore(WATCH_KEY);s[matchId()]=plan;writeStore(WATCH_KEY,s)}
 
   function seedConversation(){
     var rows=getMessages();
@@ -63,7 +66,8 @@
     if(!matched)return;
     seedConversation();
     var plan=getDatePlan();
-    $('#match').innerHTML='<span class="pill">SIMULATED CHAT</span><h2>'+esc(matched.name)+'</h2><div class="notice success">✓ Chemistry Check complete · conversation unlocked</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" onclick="adminVoiceCall()">📞 Voice</button><button class="btn" onclick="adminVideoCall()">🎥 Video</button><button class="btn primary" onclick="adminDateMode()">📍 Date Mode</button><button class="btn" onclick="fullProfile()">View profile</button></div>'+(plan?'<div class="notice success">📍 Date plan: '+esc(plan.whenLabel)+' · '+esc(plan.place)+'</div>':'')+'<div class="chat" id="chat"></div><div class="compose"><input id="chatInput" placeholder="Message '+esc(matched.name)+'…"><button class="btn primary" onclick="sendMsg()">Send</button></div><button class="btn" style="margin-top:10px" onclick="closeMatch()">Back to swiping</button>';
+    var watch=getWatchPlan();
+    $('#match').innerHTML='<span class="pill">SIMULATED CHAT</span><h2>'+esc(matched.name)+'</h2><div class="notice success">✓ Chemistry Check complete · conversation unlocked</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" onclick="adminVoiceCall()">📞 Voice</button><button class="btn" onclick="adminVideoCall()">🎥 Video</button><button class="btn" onclick="adminWatchTogether()">🎬 Netflix / Watch Together</button><button class="btn primary" onclick="adminDateMode()">📍 Date Mode</button><button class="btn" onclick="fullProfile()">View profile</button></div>'+(plan?'<div class="notice success">📍 Date plan: '+esc(plan.whenLabel)+' · '+esc(plan.place)+'</div>':'')+(watch?'<div class="notice success">🎬 Watch Together: '+esc(watch.provider)+' · '+esc(watch.title||'Movie night')+'</div>':'')+'<div class="chat" id="chat"></div><div class="compose"><input id="chatInput" placeholder="Message '+esc(matched.name)+'…"><button class="btn primary" onclick="sendMsg()">Send</button></div><button class="btn" style="margin-top:10px" onclick="closeMatch()">Back to swiping</button>';
     renderMessages();
     var input=$('#chatInput');if(input)input.onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}};
   };
@@ -96,6 +100,53 @@
     saveDatePlan({when:when,whenLabel:label,place:place,note:note,status:'accepted',savedAt:new Date().toISOString()});
     var rows=getMessages();rows.push(['me','Date idea: '+place+' · '+label]);rows.push(['them','That works for me — it’s a date 💘']);saveMessages(rows);
     chat();
+  };
+
+  function providerFromUrl(raw){
+    try{
+      var h=new URL(raw).hostname.toLowerCase().replace(/^www\./,'');
+      if(h==='netflix.com'||h.endsWith('.netflix.com'))return 'Netflix';
+      if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtu.be')return 'YouTube';
+      if(h==='max.com'||h==='play.max.com'||h.endsWith('.max.com'))return 'Max';
+      if(h==='hulu.com'||h.endsWith('.hulu.com'))return 'Hulu';
+      if(h==='disneyplus.com'||h.endsWith('.disneyplus.com'))return 'Disney+';
+      if(h==='primevideo.com'||h.endsWith('.primevideo.com')||h==='amazon.com'||h.endsWith('.amazon.com'))return 'Prime Video';
+      if(h==='peacocktv.com'||h.endsWith('.peacocktv.com'))return 'Peacock';
+      if(h==='paramountplus.com'||h.endsWith('.paramountplus.com'))return 'Paramount+';
+      if(h==='tv.apple.com'||h.endsWith('.tv.apple.com'))return 'Apple TV';
+    }catch(_){return ''}
+    return '';
+  }
+
+  adminWatchTogether=function(){
+    var prior=getWatchPlan();
+    $('#match').innerHTML='<span class="pill">WATCH TOGETHER · DEMO</span><div style="font-size:48px;margin:10px 0">🎬</div><h2>Movie night with '+esc(matched.name)+'</h2><p class="muted">Netflix mode gives both people a shared 3…2…1 start while each person watches through their own streaming account.</p><div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0"><button class="btn '+((prior&&prior.provider==='Netflix')?'primary':'')+'" onclick="pickAdminWatchProvider(\'Netflix\')">Netflix</button><button class="btn" onclick="pickAdminWatchProvider(\'YouTube\')">YouTube</button><button class="btn" onclick="pickAdminWatchProvider(\'Max\')">Max</button><button class="btn" onclick="pickAdminWatchProvider(\'Hulu\')">Hulu</button><button class="btn" onclick="pickAdminWatchProvider(\'Disney+\')">Disney+</button><button class="btn" onclick="pickAdminWatchProvider(\'Prime Video\')">Prime Video</button></div><input id="adminWatchProvider" type="hidden" value="'+esc((prior&&prior.provider)||'Netflix')+'"><div style="display:grid;gap:10px"><label class="muted">Movie / show title<input id="adminWatchTitle" maxlength="160" placeholder="What are you watching?" value="'+esc((prior&&prior.title)||'')+'" style="width:100%;margin-top:6px;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0d0b10;color:white"></label><label class="muted">Streaming link <span style="opacity:.7">(optional in demo)</span><input id="adminWatchUrl" inputmode="url" placeholder="https://www.netflix.com/title/..." value="'+esc((prior&&prior.url)||'')+'" style="width:100%;margin-top:6px;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0d0b10;color:white"></label></div><div class="notice" style="margin-top:12px">VERAMOR does not copy or rebroadcast Netflix or other streaming content. Each person uses their own authorized account.</div><div id="adminWatchMsg"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="btn" onclick="chat()">Back to chat</button><button class="btn primary" onclick="startAdminWatch()">Start together</button></div>';
+  };
+
+  pickAdminWatchProvider=function(provider){
+    var h=$('#adminWatchProvider');if(h)h.value=provider;
+    Array.from(document.querySelectorAll('#match .btn')).forEach(function(b){if(['Netflix','YouTube','Max','Hulu','Disney+','Prime Video'].indexOf(b.textContent.trim())>=0)b.classList.toggle('primary',b.textContent.trim()===provider)});
+    var url=$('#adminWatchUrl');if(url&&!url.value&&provider==='Netflix')url.placeholder='https://www.netflix.com/title/...';
+  };
+
+  startAdminWatch=function(){
+    var provider=($('#adminWatchProvider')&&$('#adminWatchProvider').value)||'Netflix';
+    var title=(($('#adminWatchTitle')&&$('#adminWatchTitle').value)||'').trim()||'Movie night';
+    var url=(($('#adminWatchUrl')&&$('#adminWatchUrl').value)||'').trim();
+    if(url){var detected=providerFromUrl(url);if(!detected){$('#adminWatchMsg').innerHTML='<div class="notice">Use a Netflix, YouTube, Max, Hulu, Disney+, Prime Video, Peacock, Paramount+, or Apple TV link.</div>';return}provider=detected}
+    saveWatchPlan({provider:provider,title:title,url:url,status:'active',startedAt:new Date().toISOString()});
+    var rows=getMessages();rows.push(['me','Watch Together invite: '+provider+' · '+title]);rows.push(['them',(matched.name==='Amina'?'I’m in 🍿':'I’m in — start it! 🍿')]);saveMessages(rows);
+    adminWatchCountdown(3,provider,title,url);
+  };
+
+  adminWatchCountdown=function(n,provider,title,url){
+    clearInterval(timer);
+    $('#match').innerHTML='<span class="pill">'+esc(provider.toUpperCase())+' · WATCH TOGETHER</span><h2>'+esc(title)+'</h2><p class="muted">'+esc(matched.name)+' joined. Starting together in…</p><div id="adminWatchCount" style="font-size:86px;font-weight:900;line-height:1;text-align:center;margin:28px 0">'+n+'</div><div class="notice success">✓ Both viewers ready</div>';
+    timer=setInterval(function(){n--;var c=$('#adminWatchCount');if(c)c.textContent=n>0?n:'▶';if(n<=0){clearInterval(timer);setTimeout(function(){adminWatchReady(provider,title,url)},500)}},1000);
+  };
+
+  adminWatchReady=function(provider,title,url){
+    $('#match').innerHTML='<span class="pill">WATCH TOGETHER · LIVE DEMO</span><div style="font-size:54px;margin:10px 0">🍿</div><h2>'+esc(title)+'</h2><div class="notice success">▶ Synced start · '+esc(provider)+' · '+esc(matched.name)+' is watching with you</div><p class="muted">For services such as Netflix, VERAMOR syncs the start experience; the actual show stays inside each person’s own streaming account.</p><div style="display:flex;gap:8px;flex-wrap:wrap">'+(url?'<button class="btn primary" onclick="window.open(\''+esc(url)+'\',\'_blank\',\'noopener,noreferrer\')">Open '+esc(provider)+'</button>':'')+'<button class="btn" onclick="adminWatchTogether()">Change movie</button><button class="btn" onclick="chat()">Back to chat</button></div>';
   };
 
   adminVoiceCall=function(){
