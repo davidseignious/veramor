@@ -15,6 +15,7 @@ function applyTheme(theme){
   document.documentElement.dataset.theme=value;
   document.documentElement.style.colorScheme=value;
   localStorage.setItem(THEME_KEY,value);
+  const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=value==='light'?'#f6f4f8':'#09080d';
   const b=document.getElementById('themeToggle');
   if(b){
     b.textContent=value==='dark'?'☀️':'🌙';
@@ -44,11 +45,14 @@ async function installUniversityBanner(){
   const domain=eduDomain(session.user.email);if(!domain){old?.remove();return}
   let school=domain;
   try{const {data}=await polishSb.from('profiles').select('university_name,university_verified').eq('id',session.user.id).maybeSingle();if(data?.university_name)school=data.university_name}catch(_e){}
-  const app=document.getElementById('appScreen');if(!app||old)return;
+  const shell=document.querySelector('main.shell');if(!shell||old)return;
   const banner=document.createElement('div');banner.id='universityLoginBanner';banner.className='university-login-banner';
-  banner.innerHTML=`<span class="university-cap">🎓</span><span><strong>University account</strong><small>${school} · University Mode is available</small></span><button class="btn" id="openUniversityMode">University Mode</button>`;
-  app.insertAdjacentElement('afterbegin',banner);
-  document.getElementById('openUniversityMode').onclick=()=>document.getElementById('campusToggle')?.scrollIntoView({behavior:'smooth',block:'center'});
+  banner.innerHTML=`<span class="university-cap">🎓</span><span><strong>University account detected</strong><small>${school} · University Mode is available after profile setup</small></span><button class="btn" id="openUniversityMode">University Mode</button>`;
+  shell.insertAdjacentElement('afterbegin',banner);
+  document.getElementById('openUniversityMode').onclick=()=>{
+    const campus=document.getElementById('universityModeCard')||document.getElementById('universitySettings');
+    if(campus)campus.scrollIntoView({behavior:'smooth',block:'center'});else alert('University Mode will appear in Discover as soon as your verified profile is ready.');
+  };
 }
 
 async function readInternational(){
