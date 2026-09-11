@@ -81,6 +81,59 @@ function addForgotPassword(){
   };
 }
 
+function installFriendBetaSignupBypass(){
+  const form=document.getElementById('authForm');
+  if(!form||form.dataset.friendBetaSignup==='1')return;
+  form.dataset.friendBetaSignup='1';
+
+  document.addEventListener('submit',async e=>{
+    if(e.target!==form)return;
+    const ageRow=document.getElementById('ageRow');
+    const isSignup=!!ageRow&&!ageRow.classList.contains('hidden');
+    if(!isSignup)return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const email=(document.getElementById('authEmail')?.value||'').trim().toLowerCase();
+    const password=document.getElementById('authPassword')?.value||'';
+    const ageConfirm=document.getElementById('ageConfirm');
+    const btn=document.getElementById('authSubmit');
+    if(!ageConfirm?.checked)return notice('#authMsg','Confirm that you are at least 18.','warn');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notice('#authMsg','Enter a valid email address.','warn');
+    if(password.length<8)return notice('#authMsg','Password must be at least 8 characters.','warn');
+
+    const old=btn?.textContent||'Create account';
+    if(btn){btn.disabled=true;btn.textContent='Creating…'}
+    notice('#authMsg','');
+    try{
+      const r=await fetch(URL+'/functions/v1/beta-signup',{
+        method:'POST',
+        headers:{'content-type':'application/json','apikey':KEY},
+        body:JSON.stringify({email,password})
+      });
+      const body=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(body.error||'Could not create account.');
+
+      const {error}=await hardeningSb.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      notice('#authMsg','Friend Beta account active. Opening your profile…','ok');
+      setTimeout(()=>location.reload(),250);
+    }catch(err){
+      notice('#authMsg',err?.message||'Could not create account.','bad');
+      if(btn){btn.disabled=false;btn.textContent=old}
+    }
+  },true);
+
+  const legal=document.querySelector('#authScreen .legal');
+  if(legal&&!document.getElementById('betaEmailNote')){
+    const p=document.createElement('p');
+    p.id='betaEmailNote';p.className='notice';
+    p.textContent='Friend Beta testing: accounts activate immediately after signup. Email confirmation will return before public launch.';
+    legal.insertAdjacentElement('beforebegin',p);
+  }
+}
+
 function installSafeFaceReplace(){
   const btn=document.getElementById('uploadFace');
   if(!btn)return;
@@ -167,6 +220,7 @@ function addEnterToSend(){
 }
 
 window.addEventListener('load',()=>{
+  installFriendBetaSignupBypass();
   addForgotPassword();
   installSafeFaceReplace();
   installSafeIntroReplace();
