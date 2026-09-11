@@ -55,6 +55,20 @@ async function installUniversityBanner(){
   };
 }
 
+function installDateModeStrip(){
+  const modes=document.getElementById('modeButtons');if(!modes)return;
+  if(!document.getElementById('dateModeStripLabel')){
+    const head=document.createElement('div');head.id='dateModeStripLabel';head.className='date-mode-strip-label';
+    head.innerHTML='<div><span class="pill">DATE MODE</span><strong>Choose how you want to meet</strong></div><span class="pill warn">GROUP MODE · BETA</span>';
+    modes.insertAdjacentElement('beforebegin',head);
+  }
+  const single=modes.querySelector('[data-mode="single"]'),duo=modes.querySelector('[data-mode="duo"]'),trio=modes.querySelector('[data-mode="trio"]');
+  if(single&&!single.dataset.polished){single.dataset.polished='1';single.innerHTML='<strong>Solo</strong><small>1-on-1 dating</small>'}
+  if(duo&&!duo.dataset.polished){duo.dataset.polished='1';duo.innerHTML='<strong>2 Man</strong><small>Bring 1 friend</small>'}
+  if(trio&&!trio.dataset.polished){trio.dataset.polished='1';trio.innerHTML='<strong>Trio</strong><small>Bring 2 friends</small>'}
+  modes.classList.add('date-mode-strip');
+}
+
 async function readInternational(){
   const session=await getSession();if(!session?.user)return false;
   const {data}=await polishSb.from('user_settings').select('international_discovery_enabled').eq('user_id',session.user.id).maybeSingle();
@@ -109,6 +123,7 @@ function installObservers(){
 
 function install(){
   installThemeToggle();
+  installDateModeStrip();
   installInternationalQuickButton();
   installObservers();
   installUniversityBanner().catch(()=>{});
