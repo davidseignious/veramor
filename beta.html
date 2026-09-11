@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="beta-live.css">
   <link rel="stylesheet" href="beta-date-mode.css">
   <link rel="stylesheet" href="beta-ui-polish.css">
+  <link rel="stylesheet" href="full-profile-story.css?v=20260910-story1">
 </head>
 <body>
 <header class="topbar"><div class="inner"><div><span class="brand">VERA<i>MOR</i></span><span class="beta">FRIEND BETA</span></div><button id="topSignOut" class="btn hidden">Sign out</button></div></header>
@@ -89,7 +90,7 @@
     <section id="profileView" class="appView hidden"><div class="section-title"><h2>My profile</h2><span id="myVerified" class="pill ok">VERIFIED</span></div><div id="myProfile"></div><button id="editLiveProfile" class="btn full">Edit profile</button></section>
 
     <section id="settingsView" class="appView hidden">
-      <div class="section-title"><h2>Settings & safety</h2></div>
+      <div class="section-title"><h2>Settings & safety</h3></div>
       <div class="panel"><label class="notice"><input id="discoveryToggle" type="checkbox" checked> Show me in discovery</label><p class="muted">Turning this off hides you from new discovery without deleting your matches.</p><button id="saveSettings" class="btn full">Save settings</button><div id="settingsMsg"></div></div>
       <div class="panel"><h3>Discovery locations</h3><p class="muted"><strong>International Browse</strong> is free for every tier and only changes who you can browse. <strong>Travel Mode</strong> changes the location your account browses from and requires an active paid plan.</p></div>
       <div class="panel"><h3>Safety</h3><p class="muted">Block and report are available from profiles and conversations. Blocking immediately removes the connection from both sides.</p><p><a href="safety.html" target="_blank" style="color:#d5c8ff">Read beta safety rules</a></p></div>
@@ -100,9 +101,9 @@
 
 <nav id="bottomNav" class="nav hidden"><div class="inner"><button class="on" data-view="discoverView">Discover</button><button data-view="matchesView">Matches</button><button data-view="profileView">Profile</button><button data-view="settingsView">Settings</button></div></nav>
 
-<div id="profileModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Full profile</strong><button class="x" data-close="profileModal">×</button></div><div id="profileModalBody"></div></div></div>
-<div id="matchModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong id="matchModalTitle">Match</strong><button class="x" data-close="matchModal">×</button></div><div id="matchModalBody"></div></div></div>
-<div id="safetyModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Safety</strong><button class="x" data-close="safetyModal">×</button></div><div id="safetyModalBody"></div></div></div>
+<div id="profileModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Full profile</strong><button class="x" data-close="profileModal" aria-label="Close full profile">×</button></div><div id="profileModalBody"></div></div></div>
+<div id="matchModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong id="matchModalTitle">Match</strong><button class="x" data-close="matchModal" aria-label="Close match">×</button></div><div id="matchModalBody"></div></div></div>
+<div id="safetyModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Safety</strong><button class="x" data-close="safetyModal" aria-label="Close safety">×</button></div><div id="safetyModalBody"></div></div></div>
 
 <script type="module" src="beta.js"></script>
 <script type="module" src="beta-hardening.js"></script>
@@ -117,5 +118,7 @@
 <script type="module" src="beta-date-mode.js"></script>
 <script type="module" src="beta-photo-quality.js"></script>
 <script type="module" src="beta-ui-polish.js"></script>
+<script type="module" src="beta-streaming-privacy.js?v=20260910-privacy1"></script>
+<script src="modal-close-fix.js?v=20260910-close1"></script>
 </body>
 </html>
