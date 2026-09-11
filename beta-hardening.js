@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const URL='https://rfcoworvfqcqallgpozn.supabase.co';
 const KEY='sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF';
+const BETA_URL='https://veramor.vercel.app/beta.html';
 const hardeningSb=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
 function notice(target,text,type=''){
@@ -50,7 +51,7 @@ function recoveryDialog(){
       notice('#recoveryMsg','Password updated. Returning you to login…','ok');
       await hardeningSb.auth.signOut();
       history.replaceState({},'',location.pathname);
-      setTimeout(()=>location.replace('/beta'),500);
+      setTimeout(()=>location.replace(BETA_URL),500);
     }catch(e){notice('#recoveryMsg',e.message||'Could not update password.','bad');btn.disabled=false;btn.textContent='Update password'}
   };
 }
@@ -73,9 +74,9 @@ function addForgotPassword(){
     if(!email)return notice('#authMsg','Enter your email first, then choose Forgot password.','warn');
     btn.disabled=true;btn.textContent='Sending…';
     try{
-      const {error}=await hardeningSb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/beta'});
+      const {error}=await hardeningSb.auth.resetPasswordForEmail(email,{redirectTo:BETA_URL});
       if(error)throw error;
-      notice('#authMsg','If that email has a VERAMOR account, a password-reset link has been sent.','ok');
+      notice('#authMsg','If that email has a VERAMOR account, a password-reset link has been sent. Use the newest reset email.','ok');
     }catch(e){notice('#authMsg',e.message||'Could not send reset email.','bad')}
     finally{btn.disabled=false;btn.textContent='Forgot password?'}
   };
