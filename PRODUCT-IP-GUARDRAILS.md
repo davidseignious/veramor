@@ -23,6 +23,12 @@ Use VERAMOR-native language where possible. Current preferred action language:
 - Skip = no preference / move on
 - Connect = standard positive interest
 - Signal = stronger interest
+- Profile Link = revocable profile-share link
+- You connected = mutual-interest moment
+
+Do not use competitor-branded dating terminology as public feature branding without specific trademark clearance. Avoid, among other terms, **Passport**, **Super Like**, **Rewind**, **Swipe Right**, **Swipe Left**, and **It's a Match** as named VERAMOR features or branded product copy.
+
+Backend/internal identifiers may retain legacy names temporarily when changing them would risk breaking production, but public-facing labels should use VERAMOR-native names.
 
 Any feature name intended for public branding should still receive a current trademark/common-law search before launch.
 
@@ -34,5 +40,6 @@ Any feature name intended for public branding should still receive a current tra
 4. Could it implicate an active software/design patent? If yes, stop and review before shipping.
 5. Are all images, video, audio, fonts, and third-party assets licensed or owned?
 6. Is any third-party integration using an official API/SDK or linking users directly to the provider rather than collecting credentials?
+7. Does the feature create new sensitive data, biometric processing, payment, location, child-safety, or UGC obligations? If yes, require privacy/legal review before production launch.
 
 If any answer is uncertain, treat the feature as needing review before production launch.
