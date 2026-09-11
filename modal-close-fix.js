@@ -28,6 +28,8 @@
     if(!target||!target.closest)return false;
     var btn=target.closest('[data-close],.modal .close,.modal .x');
     if(!btn)return false;
+    /* VERAMOR Live owns its close lifecycle so calls/cameras/watch rooms are cleaned up correctly. */
+    if(btn.id==='veraLiveClose')return false;
     var id=btn.getAttribute('data-close');
     var modal=id?document.getElementById(id):btn.closest('.modal');
     cleanupModalState(modal);
@@ -36,6 +38,7 @@
 
   function bindDirect(){
     document.querySelectorAll('[data-close],.modal .close,.modal .x').forEach(function(btn){
+      if(btn.id==='veraLiveClose')return;
       btn.setAttribute('type','button');
       btn.style.pointerEvents='auto';
       btn.style.touchAction='manipulation';
@@ -57,7 +60,7 @@
         if(e.stopImmediatePropagation)e.stopImmediatePropagation();
         return;
       }
-      if(type==='click'&&e.target&&e.target.classList&&e.target.classList.contains('modal')){
+      if(type==='click'&&e.target&&e.target.classList&&e.target.classList.contains('modal')&&e.target.id!=='veraLiveModal'){
         cleanupModalState(e.target);
       }
     },true);
@@ -68,7 +71,12 @@
     var open=Array.from(document.querySelectorAll('.modal')).reverse().find(function(m){
       return m.classList.contains('on')||!m.classList.contains('hidden');
     });
-    if(open){e.preventDefault();cleanupModalState(open)}
+    if(!open)return;
+    if(open.id==='veraLiveModal'){
+      var liveClose=document.getElementById('veraLiveClose');if(liveClose){e.preventDefault();liveClose.click()}
+      return;
+    }
+    e.preventDefault();cleanupModalState(open);
   },true);
 
   var observer=new MutationObserver(function(){bindDirect()});
