@@ -1,4 +1,14 @@
+import './beta-legal-compliance.js';
+import './beta-signup-legal-gate.js';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+
+if(!document.querySelector('link[href^="beta-legal-compliance.css"]')){
+  const legalCss=document.createElement('link');
+  legalCss.rel='stylesheet';
+  legalCss.href='beta-legal-compliance.css?v=20260911-legal1';
+  document.head.appendChild(legalCss);
+}
+
 if(new URLSearchParams(location.search).get('qa')==='1'){
   const sb=createClient('https://rfcoworvfqcqallgpozn.supabase.co','sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const root=document.createElement('aside');root.id='veraQa';root.innerHTML='<div class="vera-qa-head"><strong>VERAMOR Beta QA</strong><button id="veraQaClose">×</button></div><p>Run this in both tester sessions. It checks the live account path without creating fake matches or messages.</p><button class="btn primary full" id="veraQaRun">Run checks</button><div id="veraQaRows"></div>';
