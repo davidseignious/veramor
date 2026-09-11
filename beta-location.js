@@ -94,6 +94,7 @@ function loadExperienceModules(){
   import('./beta-instagram.js').catch(e=>console.error('Instagram module failed',e));
   import('./beta-prompts.js').catch(e=>console.error('Prompt module failed',e));
   import('./beta-live.js').catch(e=>console.error('Calls / Watch Together module failed',e));
+  import('./beta-feature-visibility.js').catch(e=>console.error('Match feature preview failed',e));
 }
 
 loadExperienceModules();
