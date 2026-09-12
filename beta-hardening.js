@@ -3,6 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const URL='https://rfcoworvfqcqallgpozn.supabase.co';
 const KEY='sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF';
 const BETA_URL='https://veramor.vercel.app/beta.html';
+const TERMS_VERSION='2026-09-11.1';
+const PRIVACY_VERSION='2026-09-11.1';
+const SAFETY_VERSION='2026-09-11.1';
+const BACKGROUND_NOTICE='VERAMOR DOES NOT CONDUCT CRIMINAL BACKGROUND SCREENINGS ON ITS MEMBERS.';
 const hardeningSb=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
 function notice(target,text,type=''){
@@ -31,6 +35,78 @@ async function owned(bucket,userId){
   if(error)throw error;
   return (data||[]).filter(x=>x?.id&&x?.name);
 }
+function friendlyAuthError(err){
+  const raw=String(err?.message||err||'').trim();
+  const msg=raw.toLowerCase();
+  if(msg.includes('invalid login credentials')||msg.includes('invalid credentials'))return 'Email or password is incorrect. Use the same password you signed up with, or tap Forgot password.';
+  if(msg.includes('email not confirmed'))return 'This beta account still needs activation. Choose Create account once with the same email and password, then log in.';
+  if(msg.includes('permission denied'))return 'Your account signed in, but VERAMOR could not finish loading it. Please try again now.';
+  if(msg.includes('too many requests')||msg.includes('rate limit'))return 'Too many attempts were made too quickly. Wait a few minutes, then try again.';
+  if(msg.includes('failed to fetch')||msg.includes('network'))return 'VERAMOR could not reach the login service. Check your connection and try again.';
+  return raw||'Could not continue.';
+}
+
+function ensureLegalSignupUi(){
+  const form=document.getElementById('authForm');
+  const age=document.getElementById('ageRow');
+  if(!form||!age)return null;
+  let wrap=document.getElementById('veraLegalSignup');
+  if(!wrap){
+    wrap=document.createElement('div');
+    wrap.id='veraLegalSignup';
+    wrap.className='hidden';
+    wrap.innerHTML=`
+      <div class="vera-background-disclosure">${BACKGROUND_NOTICE}</div>
+      <div class="vera-safety-registration">
+        <strong>Dating safety notice</strong>
+        <p>Use caution when communicating with someone you have not met. Do not share financial information, passwords, one-time codes, or unnecessary identifying information.</p>
+        <p>For an in-person meeting, tell someone you trust where you are going, arrange your own transportation, and meet in a public place.</p>
+        <a href="safety.html" target="_blank" rel="noopener">Read the Dating Safety Center</a>
+      </div>
+      <label class="notice vera-legal-check"><input id="termsConfirm" type="checkbox"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Beta Terms</a> and acknowledge the <a href="privacy.html" target="_blank" rel="noopener">Privacy Notice</a>.</span></label>
+      <label class="notice vera-legal-check"><input id="safetyConfirm" type="checkbox"> <span>I have read the dating safety notice and understand that verification does not guarantee another person's history, intentions, or behavior.</span></label>
+      <label class="notice vera-legal-check"><input id="backgroundConfirm" type="checkbox"> <span>I acknowledge that VERAMOR does not conduct criminal background screenings on members.</span></label>`;
+    age.insertAdjacentElement('afterend',wrap);
+  }
+  if(wrap.dataset.signupSync!=='1'){
+    wrap.dataset.signupSync='1';
+    const sync=()=>wrap.classList.toggle('hidden',age.classList.contains('hidden'));
+    new MutationObserver(sync).observe(age,{attributes:true,attributeFilter:['class']});
+    sync();
+  }
+  return wrap;
+}
+async function persistLegalAcceptance(u){
+  if(!u)return;
+  const payload={terms:TERMS_VERSION,privacy:PRIVACY_VERSION,safety:SAFETY_VERSION,background:true,accepted_at:new Date().toISOString()};
+  const prior=u.user_metadata||{};
+  const {error}=await hardeningSb.auth.updateUser({data:{...prior,veramor_legal_acceptance:payload}});
+  if(error)throw error;
+  localStorage.removeItem('veramor_pending_legal_acceptance');
+}
+async function ensurePostLoginReady(){
+  const {data:{session}}=await hardeningSb.auth.getSession();
+  const u=session?.user;
+  if(!u)throw new Error('Login did not create an active session. Please try again.');
+  let lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const {data:p,error:pe}=await hardeningSb.from('profiles').select('id').eq('id',u.id).maybeSingle();
+      if(pe)throw pe;
+      if(!p){const {error}=await hardeningSb.from('profiles').insert({id:u.id});if(error&&error.code!=='23505')throw error}
+      const {data:s,error:se}=await hardeningSb.from('user_settings').select('user_id').eq('user_id',u.id).maybeSingle();
+      if(se)throw se;
+      if(!s){const {error}=await hardeningSb.from('user_settings').insert({user_id:u.id});if(error&&error.code!=='23505')throw error}
+      const {error:le}=await hardeningSb.rpc('profile_launch_status');
+      if(le)throw le;
+      return true;
+    }catch(e){
+      lastError=e;
+      if(attempt===0)await new Promise(r=>setTimeout(r,300));
+    }
+  }
+  throw lastError||new Error('Could not load your account setup.');
+}
 
 let recoveryRequested=/type=recovery/i.test(location.hash+location.search);
 function recoveryDialog(){
@@ -52,7 +128,7 @@ function recoveryDialog(){
       await hardeningSb.auth.signOut();
       history.replaceState({},'',location.pathname);
       setTimeout(()=>location.replace(BETA_URL),500);
-    }catch(e){notice('#recoveryMsg',e.message||'Could not update password.','bad');btn.disabled=false;btn.textContent='Update password'}
+    }catch(e){notice('#recoveryMsg',friendlyAuthError(e),'bad');btn.disabled=false;btn.textContent='Update password'}
   };
 }
 hardeningSb.auth.onAuthStateChange((event)=>{
@@ -70,58 +146,71 @@ function addForgotPassword(){
   btn.type='button';btn.id='forgotPassword';btn.className='btn full';btn.style.marginTop='8px';btn.textContent='Forgot password?';
   form.insertAdjacentElement('afterend',btn);
   btn.onclick=async()=>{
-    const email=(document.getElementById('authEmail')?.value||'').trim();
+    const email=(document.getElementById('authEmail')?.value||'').trim().toLowerCase();
     if(!email)return notice('#authMsg','Enter your email first, then choose Forgot password.','warn');
     btn.disabled=true;btn.textContent='Sending…';
     try{
       const {error}=await hardeningSb.auth.resetPasswordForEmail(email,{redirectTo:BETA_URL});
       if(error)throw error;
       notice('#authMsg','If that email has a VERAMOR account, a password-reset link has been sent. Use the newest reset email.','ok');
-    }catch(e){notice('#authMsg',e.message||'Could not send reset email.','bad')}
+    }catch(e){notice('#authMsg',friendlyAuthError(e),'bad')}
     finally{btn.disabled=false;btn.textContent='Forgot password?'}
   };
 }
 
 function installFriendBetaSignupBypass(){
   const form=document.getElementById('authForm');
-  if(!form||form.dataset.friendBetaSignup==='1')return;
-  form.dataset.friendBetaSignup='1';
+  if(!form||form.dataset.friendBetaSignup==='2')return;
+  form.dataset.friendBetaSignup='2';
+  ensureLegalSignupUi();
 
   document.addEventListener('submit',async e=>{
     if(e.target!==form)return;
-    const ageRow=document.getElementById('ageRow');
-    const isSignup=!!ageRow&&!ageRow.classList.contains('hidden');
-    if(!isSignup)return;
-
     e.preventDefault();
     e.stopImmediatePropagation();
 
+    const ageRow=document.getElementById('ageRow');
+    const isSignup=!!ageRow&&!ageRow.classList.contains('hidden');
     const email=(document.getElementById('authEmail')?.value||'').trim().toLowerCase();
     const password=document.getElementById('authPassword')?.value||'';
-    const ageConfirm=document.getElementById('ageConfirm');
     const btn=document.getElementById('authSubmit');
-    if(!ageConfirm?.checked)return notice('#authMsg','Confirm that you are at least 18.','warn');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notice('#authMsg','Enter a valid email address.','warn');
     if(password.length<8)return notice('#authMsg','Password must be at least 8 characters.','warn');
+    if(isSignup&&password.length>128)return notice('#authMsg','Password must be 128 characters or fewer.','warn');
+    if(isSignup){
+      ensureLegalSignupUi();
+      if(!document.getElementById('ageConfirm')?.checked)return notice('#authMsg','Confirm that you are at least 18.','warn');
+      if(!document.getElementById('termsConfirm')?.checked||!document.getElementById('safetyConfirm')?.checked||!document.getElementById('backgroundConfirm')?.checked){
+        return notice('#authMsg','Please accept the Terms, Privacy Notice, dating-safety notice, and background-screening disclosure to create an account.','warn');
+      }
+    }
 
-    const old=btn?.textContent||'Create account';
-    if(btn){btn.disabled=true;btn.textContent='Creating…'}
+    const old=btn?.textContent||(isSignup?'Create account':'Log in');
+    if(btn){btn.disabled=true;btn.textContent=isSignup?'Creating…':'Logging in…'}
     notice('#authMsg','');
+    let signedIn=false;
     try{
-      const r=await fetch(URL+'/functions/v1/beta-signup',{
-        method:'POST',
-        headers:{'content-type':'application/json','apikey':KEY},
-        body:JSON.stringify({email,password})
-      });
-      const body=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(body.error||'Could not create account.');
+      if(isSignup){
+        const r=await fetch(URL+'/functions/v1/beta-signup',{
+          method:'POST',
+          headers:{'content-type':'application/json','apikey':KEY},
+          body:JSON.stringify({email,password})
+        });
+        const body=await r.json().catch(()=>({}));
+        if(!r.ok)throw new Error(body.error||'Could not create account.');
+      }
 
-      const {error}=await hardeningSb.auth.signInWithPassword({email,password});
+      const {data,error}=await hardeningSb.auth.signInWithPassword({email,password});
       if(error)throw error;
-      notice('#authMsg','Friend Beta account active. Opening your profile…','ok');
-      setTimeout(()=>location.reload(),250);
+      signedIn=true;
+      if(isSignup)await persistLegalAcceptance(data?.user);
+      await ensurePostLoginReady();
+      notice('#authMsg',isSignup?'Account created. Opening your profile…':'Signed in. Opening your profile…','ok');
+      setTimeout(()=>location.reload(),180);
     }catch(err){
-      notice('#authMsg',err?.message||'Could not create account.','bad');
+      if(signedIn)try{await hardeningSb.auth.signOut()}catch(_e){}
+      const text=friendlyAuthError(err);
+      notice('#authMsg',text,'bad');
       if(btn){btn.disabled=false;btn.textContent=old}
     }
   },true);
@@ -221,6 +310,7 @@ function addEnterToSend(){
 }
 
 window.addEventListener('load',()=>{
+  ensureLegalSignupUi();
   installFriendBetaSignupBypass();
   addForgotPassword();
   installSafeFaceReplace();
