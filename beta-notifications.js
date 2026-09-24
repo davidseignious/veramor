@@ -218,7 +218,8 @@ function navigateAction(action){
 async function claimGift(id){
   try{
     const {data,error}=await notifySb.rpc('claim_weekly_reward');if(error)throw error;
-    if(id)await markRead(id);
+    for(const reward of notifyRows.filter(n=>n.category==='reward'&&!n.read_at))await markRead(reward.id);
+    if(id&&!notifyRows.some(n=>n.id===id))await markRead(id);
     safeToast(`Gift claimed: ${data?.amount||1} ${prettyReward(data?.reward_type)} 🎁`);
     await Promise.all([refreshNotifications(false),loadWeeklyGift()]);
   }catch(e){safeToast(e.message||'Gift is not ready yet.','bad');loadWeeklyGift().catch(()=>{})}
