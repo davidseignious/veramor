@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const URL='https://rfcoworvfqcqallgpozn.supabase.co';
 const KEY='sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF';
-const BETA_URL='https://veramor.vercel.app/beta.html';
+const BETA_URL=location.origin+'/';
 const TERMS_VERSION='2026-09-11.1';
 const PRIVACY_VERSION='2026-09-11.1';
 const SAFETY_VERSION='2026-09-11.1';
