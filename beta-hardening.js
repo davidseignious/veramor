@@ -79,6 +79,10 @@ function ensureLegalSignupUi(){
 async function persistLegalAcceptance(u){
   if(!u)return;
   const payload={terms:TERMS_VERSION,privacy:PRIVACY_VERSION,safety:SAFETY_VERSION,background:true,accepted_at:new Date().toISOString()};
+  const {error:recordError}=await hardeningSb.rpc('record_legal_acceptance',{
+    p_terms:TERMS_VERSION,p_privacy:PRIVACY_VERSION,p_safety:SAFETY_VERSION,p_background:true
+  });
+  if(recordError)throw recordError;
   const prior=u.user_metadata||{};
   const {error}=await hardeningSb.auth.updateUser({data:{...prior,veramor_legal_acceptance:payload}});
   if(error)throw error;
