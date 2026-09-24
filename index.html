@@ -1,22 +1,129 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0910"><title>VERAMOR Admin</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="demo-upgrade.css"><link rel="stylesheet" href="demo-university.css"><link rel="stylesheet" href="premium-admin-preview.css?v=20260910-approved6"><link rel="stylesheet" href="approved-final-lock.css?v=20260910-approved6"><link rel="stylesheet" href="approved-final-lock-ui.css?v=20260910-approved6"><link rel="stylesheet" href="approved-mobile-nav.css?v=20260910-approved6"><link rel="stylesheet" href="profile-details.css?v=20260910-profile1"><link rel="stylesheet" href="full-profile-story.css?v=20260910-story1"></head><body><header class="top"><div><span class="brand">VERA<i>MOR</i></span> <span class="pill">ADMIN</span></div><span id="status" class="muted">Owner access</span></header><main class="wrap">
-<section id="login" class="screen on"><div class="panel login"><span class="pill">OWNER ACCESS</span><h1>VERAMOR Admin</h1><p class="muted">Separate from dating accounts. This does not create a dating profile.</p><div id="loginMsg"></div><form id="loginForm"><div class="field"><label>Admin email</label><input id="email" type="email" value="ddseign@gmail.com" autocapitalize="none" autocomplete="username" spellcheck="false" required></div><div class="field"><label>Admin password</label><input id="pass" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required></div><button class="btn primary" style="width:100%">Open admin</button></form></div></section>
-<section id="dashboard" class="screen"><div class="head"><div><span class="pill">OWNER DASHBOARD</span><h2 style="margin:8px 0 0">Live VERAMOR overview</h2></div><div class="actions"><button class="btn primary" id="previewBtn">Preview App</button><button class="btn" id="refreshBtn">Refresh</button><button class="btn danger" id="logoutBtn">Sign out</button></div></div><div id="dash"></div></section>
-<section id="preview" class="screen"><div class="deck" id="deck"></div></section></main>
-<div class="modal" id="profileModal"><div class="sheet"><button class="close" type="button" data-close="profileModal" aria-label="Close full profile">×</button><span class="pill">FULL PROFILE</span><h2 id="fullName"></h2><div id="full"></div></div></div>
-<div class="modal" id="matchModal"><div class="sheet" style="text-align:center"><button class="close" type="button" data-close="matchModal" aria-label="Close match">×</button><div id="match"></div></div></div>
-<script src="mobile-admin-pair.js?v=20260910-mobile1"></script>
-<script src="app.js"></script>
-<script src="chemistry-fix.js"></script>
-<script src="admin-hardening.js"></script>
-<script src="admin-moderation.js"></script>
-<script src="demo-upgrade.js"></script>
-<script src="demo-university.js"></script>
-<script src="premium-admin-preview.js?v=20260910-approved6"></script>
-<script src="approved-final-lock.js?v=20260910-approved6"></script>
-<script src="approved-mobile-nav.js?v=20260910-approved6"></script>
-<script src="profile-details.js?v=20260910-profile1"></script>
-<script src="profile-quality-gate.js?v=20260910-quality1"></script>
-<script src="admin-experience-polish.js?v=20260911-chat3"></script>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09080d">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>VERAMOR Friend Beta</title>
+  <link rel="stylesheet" href="beta.css">
+  <link rel="stylesheet" href="university-mode.css">
+  <link rel="stylesheet" href="beta-experience.css">
+  <link rel="stylesheet" href="beta-prompts.css">
+  <link rel="stylesheet" href="beta-live.css">
+  <link rel="stylesheet" href="beta-date-mode.css">
+  <link rel="stylesheet" href="beta-ui-polish.css">
+  <link rel="stylesheet" href="full-profile-story.css?v=20260910-story1">
+  <link rel="stylesheet" href="beta-v2-polish.css?v=20260911-v2a">
+  <link rel="stylesheet" href="beta-gesture-actions.css?v=20260911-g1">
+</head>
+<body>
+<header class="topbar"><div class="inner"><div><span class="brand">VERA<i>MOR</i></span><span class="beta">FRIEND BETA</span></div><button id="topSignOut" class="btn hidden">Sign out</button></div></header>
+<main class="shell">
+  <section id="authScreen">
+    <div class="panel hero">
+      <span class="pill">18+ FRIEND BETA</span>
+      <h1>Dating with more signal.</h1>
+      <p>Build a real profile, verify you’re a real person, then meet people through intentional matches—not endless anonymous swiping.</p>
+    </div>
+    <div class="panel">
+      <div class="actions" style="margin-bottom:12px"><button class="btn primary" id="showLogin">Log in</button><button class="btn" id="showSignup">Create account</button></div>
+      <form id="authForm">
+        <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="email" required></div>
+        <div class="field"><label>Password</label><input id="authPassword" type="password" minlength="8" autocomplete="current-password" required></div>
+        <label id="ageRow" class="notice hidden"><input id="ageConfirm" type="checkbox"> I confirm I am at least 18 years old.</label>
+        <button class="btn primary full" id="authSubmit">Log in</button>
+      </form>
+      <div id="authMsg"></div>
+      <p class="legal">By continuing, you agree to the <a href="terms.html" target="_blank">Beta Terms</a>, <a href="privacy.html" target="_blank">Privacy Notice</a>, and <a href="safety.html" target="_blank">Safety Rules</a>.</p>
+    </div>
+  </section>
+
+  <section id="onboardingScreen" class="hidden">
+    <div class="section-title"><div><span class="pill warn">PROFILE SETUP</span><h2 style="margin-top:7px">Before you can swipe</h2></div><span id="setupPercent" class="muted"></span></div>
+    <div class="progress"><span class="on"></span><span id="prog2"></span><span id="prog3"></span></div>
+    <div class="panel">
+      <h3>Your profile</h3>
+      <div class="grid">
+        <div class="field"><label>First name</label><input id="displayName" maxlength="50" required></div>
+        <div class="field"><label>Date of birth (18–100)</label><input id="birthdate" type="date" required></div>
+        <div class="field"><label>Gender</label><select id="gender"><option value="">Choose</option><option>Woman</option><option>Man</option><option>Nonbinary</option><option value="Self-described">Self-described</option></select></div>
+        <div class="field"><label>City</label><input id="city" maxlength="80" placeholder="Chicago" required></div>
+        <div class="field"><label>Occupation <span class="muted">(optional)</span></label><input id="occupation" maxlength="80"></div>
+        <div class="field"><label>Looking for</label><select id="intent"><option value="">Choose</option><option>Long-term relationship</option><option>Relationship, open to short</option><option>Short-term, open to long</option><option>Figuring it out</option></select></div>
+      </div>
+      <div class="field"><label>Bio <span id="bioCount" class="muted">0/500</span></label><textarea id="bio" maxlength="500" placeholder="Give people something real to start a conversation with."></textarea></div>
+      <div class="field"><label>Interests <span class="muted">(comma separated)</span></label><input id="interests" maxlength="200" placeholder="Photography, live music, cooking"></div>
+      <div class="field"><label>I want to meet</label><select id="interestedIn"><option value="Everyone">Everyone</option><option value="Women">Women</option><option value="Men">Men</option></select></div>
+      <button id="saveProfile" class="btn primary full">Save profile details</button><div id="profileMsg"></div>
+    </div>
+
+    <div class="panel">
+      <span class="pill">REQUIRED MEDIA</span>
+      <h3>4 photos + one private face video</h3>
+      <p class="muted">Your verification video is for identity/liveness review and is not shown on your dating profile. A separate public intro video is optional.</p>
+      <div class="reqs"><div class="req"><b id="photoReq">0/4</b><small>Photos</small></div><div class="req"><b id="faceReq">Missing</b><small>Face video</small></div><div class="req"><b id="detailReq">Incomplete</b><small>Profile details</small></div></div>
+      <div class="field"><label>Add profile photos (up to 6)</label><input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" multiple></div>
+      <button id="uploadPhotos" class="btn full">Upload selected photos</button><div id="photoGrid" class="photo-grid"></div><div id="photoMsg"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+      <div class="field"><label>Face verification video</label><input id="faceVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" capture="user"></div>
+      <div class="notice">Record a short, clear front-facing clip in good lighting. Keep your full face visible. This stays private to verification.</div>
+      <button id="uploadFace" class="btn full">Upload face video</button><div id="facePreview" class="video-box"></div><div id="faceMsg"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+      <details><summary style="cursor:pointer;font-weight:800">Optional: add a public profile video</summary><div class="field"><label>Short intro video</label><input id="introVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/*"></div><button id="uploadIntro" class="btn full">Upload public intro</button><div id="introMsg"></div></details>
+    </div>
+
+    <div class="panel"><h3>Ready?</h3><div id="launchChecklist"></div><button id="submitVerification" class="btn primary full">Submit profile for verification</button><div id="submitMsg"></div></div>
+  </section>
+
+  <section id="waitingScreen" class="hidden">
+    <div class="panel hero"><span class="pill warn">VERIFICATION REVIEW</span><div style="font-size:56px;margin-top:14px">✓</div><h1>Profile submitted.</h1><p>Your profile stays hidden until it passes the beta verification check. You can keep editing it while you wait.</p><button id="refreshStatus" class="btn primary">Refresh status</button><button id="editProfile" class="btn">Edit profile</button><div id="waitMsg"></div></div>
+  </section>
+
+  <section id="appScreen" class="hidden">
+    <section id="discoverView" class="appView">
+      <div class="section-title"><div><span class="pill ok">VERIFIED</span><h2 style="margin-top:7px">Discover</h2></div><button id="refreshDiscovery" class="btn">Refresh</button></div>
+      <div class="actions" id="modeButtons"><button class="btn primary" data-mode="single">1-on-1</button><button class="btn" data-mode="duo">2 Man</button><button class="btn" data-mode="trio">Trio</button></div>
+      <div id="deck"></div>
+    </section>
+
+    <section id="matchesView" class="appView hidden"><div class="section-title"><h2>Matches</h2><button id="refreshMatches" class="btn">Refresh</button></div><div id="matchesList"></div></section>
+
+    <section id="profileView" class="appView hidden"><div class="section-title"><h2>My profile</h2><span id="myVerified" class="pill ok">VERIFIED</span></div><div id="myProfile"></div><button id="editLiveProfile" class="btn full">Edit profile</button></section>
+
+    <section id="settingsView" class="appView hidden">
+      <div class="section-title"><h2>Settings & safety</h2></div>
+      <div class="panel"><label class="notice"><input id="discoveryToggle" type="checkbox" checked> Show me in discovery</label><p class="muted">Turning this off hides you from new discovery without deleting your matches.</p><button id="saveSettings" class="btn full">Save settings</button><div id="settingsMsg"></div></div>
+      <div class="panel"><h3>Discovery locations</h3><p class="muted"><strong>International Browse</strong> is free for every tier and only changes who you can browse. <strong>Travel Mode</strong> changes the location your account browses from and requires an active paid plan.</p></div>
+      <div class="panel"><h3>Safety</h3><p class="muted">Block and report are available from profiles and conversations. Blocking immediately removes the connection from both sides.</p><p><a href="safety.html" target="_blank" style="color:#d5c8ff">Read beta safety rules</a></p></div>
+      <div class="panel danger-zone"><h3>Delete account</h3><p class="muted">Permanently removes your account and private VERAMOR media. This cannot be undone.</p><button id="deleteAccount" class="btn danger full">Delete my account</button><div id="deleteMsg"></div></div>
+    </section>
+  </section>
+</main>
+
+<nav id="bottomNav" class="nav hidden"><div class="inner"><button class="on" data-view="discoverView">Discover</button><button data-view="matchesView">Matches</button><button data-view="profileView">Profile</button><button data-view="settingsView">Settings</button></div></nav>
+
+<div id="profileModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Full profile</strong><button class="x" type="button" data-close="profileModal" aria-label="Close full profile">×</button></div><div id="profileModalBody"></div></div></div>
+<div id="matchModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong id="matchModalTitle">Match</strong><button class="x" type="button" data-close="matchModal" aria-label="Close match">×</button></div><div id="matchModalBody"></div></div></div>
+<div id="safetyModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Safety</strong><button class="x" type="button" data-close="safetyModal" aria-label="Close safety">×</button></div><div id="safetyModalBody"></div></div></div>
+
+<script type="module" src="beta.js"></script>
+<script type="module" src="beta-hardening.js?v=20260911-auth2"></script>
+<script type="module" src="beta-location.js"></script>
+<script type="module" src="beta-passport.js"></script>
+<script type="module" src="university-mode.js"></script>
+<script type="module" src="beta-notifications.js"></script>
+<script type="module" src="beta-chemistry-context.js"></script>
+<script type="module" src="beta-instagram.js"></script>
+<script type="module" src="beta-prompts.js"></script>
+<script type="module" src="beta-live.js"></script>
+<script type="module" src="beta-date-mode.js"></script>
+<script type="module" src="beta-photo-quality.js"></script>
+<script type="module" src="beta-ui-polish.js"></script>
+<script type="module" src="beta-streaming-privacy.js?v=20260910-privacy1"></script>
+<script type="module" src="beta-v2-polish.js?v=20260911-v2a"></script>
+<script src="beta-gesture-actions.js?v=20260911-g1"></script>
+<script type="module" src="beta-qa.js?v=20260911-qa1"></script>
 <script src="modal-close-fix.js?v=20260911-close3"></script>
-</body></html>
+</body>
+</html>
