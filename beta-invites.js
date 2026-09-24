@@ -47,7 +47,7 @@ async function ensureInvite(){
     if(inviteUserId!==session.user.id){inviteUserId=session.user.id;inviteUrl=''}
     if(!inviteUrl){
       const {data,error}=await inviteSb.rpc('get_or_create_referral_code');if(error)throw error;
-      inviteUrl=`${location.origin}/join?ref=${encodeURIComponent(data)}`;paintInvite();
+      inviteUrl=`${location.origin}/?ref=${encodeURIComponent(data)}`;paintInvite();
     }
     const {data:rows,error}=await inviteSb.from('referrals').select('status').eq('referrer_id',session.user.id);
     if(!error){const completed=(rows||[]).filter(x=>x.status==='completed').length;
