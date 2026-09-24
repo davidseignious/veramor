@@ -55,6 +55,15 @@
       <div class="field"><label>Bio <span id="bioCount" class="muted">0/500</span></label><textarea id="bio" maxlength="500" placeholder="Give people something real to start a conversation with."></textarea></div>
       <div class="field"><label>Interests <span class="muted">(comma separated)</span></label><input id="interests" maxlength="200" placeholder="Photography, live music, cooking"></div>
       <div class="field"><label>I want to meet</label><select id="interestedIn"><option value="Everyone">Everyone</option><option value="Women">Women</option><option value="Men">Men</option></select></div>
+      <h3>About your life</h3><p class="muted">Answer these before sending your profile for review. Your answers appear on your profile.</p>
+      <div class="grid">
+        <div class="field"><label>Height</label><select id="heightInches" required><option value="">Choose height</option></select></div>
+        <div class="field"><label>Do you smoke cigarettes?</label><select id="smoking" required><option value="">Choose</option><option>Never</option><option>Sometimes</option><option>Often</option><option>Quitting</option><option>Prefer not to say</option></select></div>
+        <div class="field"><label>Do you use weed?</label><select id="cannabisUse" required><option value="">Choose</option><option>Never</option><option>Sometimes</option><option>Often</option><option>Prefer not to say</option></select></div>
+        <div class="field"><label>Do you drink alcohol?</label><select id="drinking" required><option value="">Choose</option><option>Never</option><option>Socially</option><option>Often</option><option>Prefer not to say</option></select></div>
+        <div class="field"><label>Do you have children?</label><select id="hasChildren" required><option value="">Choose</option><option>Yes</option><option>No</option><option>Prefer not to say</option></select></div>
+        <div class="field"><label>Do you want children?</label><select id="wantsChildren" required><option value="">Choose</option><option>Yes</option><option>No</option><option>Open to it</option><option>Not sure</option><option>Prefer not to say</option></select></div>
+      </div>
       <button id="saveProfile" class="btn primary full">Save profile details</button><div id="profileMsg"></div>
     </div>
 
@@ -73,7 +82,7 @@
       <details><summary style="cursor:pointer;font-weight:800">Optional: add a public profile video</summary><div class="field"><label>Short intro video</label><input id="introVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/*"></div><button id="uploadIntro" class="btn full">Upload public intro</button><div id="introMsg"></div></details>
     </div>
 
-    <div class="panel"><h3>Ready?</h3><div id="launchChecklist"></div><button id="submitVerification" class="btn primary full">Submit profile for verification</button><div id="submitMsg"></div></div>
+    <div class="panel"><h3>Ready?</h3><div id="launchChecklist"></div><button id="submitVerification" class="btn primary full">Submit profile for verification</button><button id="returnToApp" class="btn full hidden">Back to my profile</button><div id="submitMsg"></div></div>
   </section>
 
   <section id="waitingScreen" class="hidden">
