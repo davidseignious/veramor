@@ -29,7 +29,7 @@
     panel.className='panel section';
     panel.id='pendingProfilesPanel';
     if(!rows.length){
-      panel.innerHTML='<span class="pill">VERIFICATION QUEUE</span><h3 style="margin-bottom:6px">No pending profiles</h3><p class="muted">New friend accounts will appear here until they meet the media requirements and you approve them.</p>';
+      panel.innerHTML='<span class="pill">VERIFICATION QUEUE</span><h3 style="margin-bottom:6px">No profiles awaiting review</h3><p class="muted">A profile appears here after its owner submits the required details, three prompt answers, four photos, and a private face video.</p>';
       $('#dash').appendChild(panel);
       return;
     }
@@ -41,8 +41,14 @@
         const id=esc(p.id);
         return '<div class="panel" style="margin-top:14px;text-align:left">'
           +'<div class="identity"><img class="avatar" src="'+esc(p.avatar||'')+'"><div><div class="name">'+name+'</div><div class="meta">'+esc(p.city||p.area_label||'Location not added')+' · '+esc(p.verification_status||'unverified')+'</div></div></div>'
-          +'<div class="tags" style="margin-top:10px"><span class="tag">Photos '+(Number(st.photo_count)||0)+'/4</span><span class="tag">Face video '+(st.face_video_submitted?'✓':'missing')+'</span><span class="tag">Setup '+(st.profile_complete?'✓':'incomplete')+'</span></div>'
+          +'<div class="tags" style="margin-top:10px"><span class="tag">Photos '+(Number(st.photo_count)||0)+'/4</span><span class="tag">Face video '+(st.face_video_submitted?'✓':'missing')+'</span><span class="tag">Prompts '+(Array.isArray(p.prompts)?p.prompts.length:0)+'/3</span><span class="tag">Submitted</span></div>'
           +mediaStrip(p)
+          +'<div class="panel" style="margin:10px 0"><strong>Prompt answers</strong>'
+          +(Array.isArray(p.prompts)?p.prompts:[]).map(function(row){
+            const kind=String(row.type||'text');
+            const media=kind==='audio'&&row.media_url?'<audio src="'+esc(row.media_url)+'" controls></audio>':kind==='video'&&row.media_url?'<video src="'+esc(row.media_url)+'" controls playsinline style="width:100%;max-height:280px"></video>':'';
+            return '<div style="margin-top:10px"><small>'+esc(row.question||'Prompt')+'</small><p>'+esc(row.text||'')+'</p>'+media+'</div>';
+          }).join('')+'</div>'
           +(p.face_video?'<video src="'+esc(p.face_video)+'" controls playsinline style="width:100%;max-height:340px;border-radius:14px;background:#000;margin:8px 0"></video>':'<div class="notice">Private face-verification video has not been submitted yet.</div>')
           +'<div class="actions" style="margin-top:10px">'
           +(ready?'<button class="btn primary" onclick="verifyPending(\''+id+'\',true)">Approve profile</button><button class="btn danger" onclick="verifyPending(\''+id+'\',false)">Reject</button>':'<button class="btn" disabled>Waiting for required uploads</button>')

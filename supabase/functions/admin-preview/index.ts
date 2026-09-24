@@ -56,10 +56,14 @@ async function decorateLive(rows:any[]){
 async function decoratePending(rows:any[]){
   const out=[];
   for(const p of rows){
-    const [photos,verificationFiles,avatarByPath]=await Promise.all([
+    const [photos,verificationFiles,avatarByPath,prompts]=await Promise.all([
       signedFolder('profile-media',String(p.id),8),
       signedFolder('verification-media',String(p.id),4),
-      p.avatar_url ? Promise.resolve(p.avatar_url) : signed('profile-media',p.avatar_path)
+      p.avatar_url ? Promise.resolve(p.avatar_url) : signed('profile-media',p.avatar_path),
+      Promise.all((Array.isArray(p.prompts)?p.prompts:[]).map(async (row:any)=>({
+        ...row,
+        media_url:row.media_path ? await signed('prompt-media',row.media_path) : null
+      })))
     ]);
     let faceVideo=null;
     if(p.presence_video_path) faceVideo=await signed('verification-media',p.presence_video_path);
@@ -67,7 +71,7 @@ async function decoratePending(rows:any[]){
       const candidate=verificationFiles.find((x:any)=>String(x.metadata?.mimetype||'').startsWith('video/') || /\.(mp4|mov|webm)$/i.test(String(x.name||'')));
       faceVideo=candidate?.url||null;
     }
-    out.push({...p,avatar:avatarByPath||photos[0]?.url||null,photos,face_video:faceVideo,admin_real:true});
+    out.push({...p,avatar:avatarByPath||photos[0]?.url||null,photos,prompts,face_video:faceVideo,admin_real:true});
   }
   return out;
 }
