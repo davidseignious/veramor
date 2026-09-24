@@ -55,6 +55,41 @@ function installNotificationUI(){
     document.getElementById('notificationSettingsJump').onclick=()=>{modal.classList.add('hidden');document.querySelector('#bottomNav button[data-view="settingsView"]')?.click();setTimeout(()=>document.getElementById('notificationPrefs')?.scrollIntoView({behavior:'smooth',block:'center'}),120)};
   }
   installNotificationSettings();
+  installWeeklyGift();
+}
+
+function installWeeklyGift(){
+  const settings=document.getElementById('settingsView');
+  if(!settings||document.getElementById('weeklyGift'))return;
+  const panel=document.createElement('div');panel.id='weeklyGift';panel.className='panel';
+  panel.innerHTML='<div class="section-title"><div><span class="pill">WEEKLY GIFT</span><h3 style="margin:7px 0 0">Your weekly progress</h3></div><span style="font-size:25px">🎁</span></div><p class="muted">Visit 7 days, connect with someone on 5 days, and send a message on 3 days within a rolling 7-day window. Claim an extra Signal when complete.</p><div id="weeklyGiftProgress" class="muted">Loading progress…</div><button id="weeklyGiftClaim" class="btn primary full" style="margin-top:12px" disabled>Claim extra Signal</button><div id="weeklyGiftMsg"></div>';
+  const danger=settings.querySelector('.danger-zone');
+  if(danger)settings.insertBefore(panel,danger);else settings.appendChild(panel);
+  document.getElementById('weeklyGiftClaim').onclick=()=>claimGift(null);
+  document.querySelector('#bottomNav button[data-view="settingsView"]')?.addEventListener('click',()=>loadWeeklyGift().catch(()=>{}));
+  loadWeeklyGift().catch(()=>{});
+}
+
+async function loadWeeklyGift(){
+  const root=document.getElementById('weeklyGiftProgress'),button=document.getElementById('weeklyGiftClaim');
+  if(!root||!button)return;
+  const s=await currentSession();if(!s?.user)return;
+  const [{data:status,error},{data:wallet}]=await Promise.all([
+    notifySb.rpc('weekly_reward_status'),
+    notifySb.from('reward_wallets').select('super_likes').eq('user_id',s.user.id).maybeSingle()
+  ]);
+  if(error){root.textContent=error.message;return}
+  root.innerHTML=`<div class="notice">Visits ${Number(status.login_days)||0}/7 · Connect days ${Number(status.swipe_days)||0}/5 · Message days ${Number(status.chat_days)||0}/3</div><p>Extra Signals available: <strong>${Number(wallet?.super_likes)||0}</strong>. A Signal uses your daily allowance first, then one earned extra.</p>`;
+  button.disabled=!status.eligible;
+  button.textContent=status.already_claimed?'Gift claimed for this week':status.eligible?'Claim extra Signal':'Keep going to unlock';
+}
+
+async function recordVisit(){
+  const s=await currentSession();if(!s?.user)return;
+  const key=`veramor_visit_${s.user.id}_${new Date().toISOString().slice(0,10)}`;
+  if(sessionStorage.getItem(key))return;
+  const {error}=await notifySb.rpc('record_engagement',{activity_kind:'login'});
+  if(!error){sessionStorage.setItem(key,'1');loadWeeklyGift().catch(()=>{})}
 }
 
 function installNotificationSettings(){
@@ -183,8 +218,10 @@ function navigateAction(action){
 async function claimGift(id){
   try{
     const {data,error}=await notifySb.rpc('claim_weekly_reward');if(error)throw error;
-    await markRead(id);safeToast(`Gift claimed: ${data?.amount||1} ${prettyReward(data?.reward_type)} 🎁`);await refreshNotifications(false);
-  }catch(e){safeToast(e.message||'Gift is not ready yet.','bad')}
+    if(id)await markRead(id);
+    safeToast(`Gift claimed: ${data?.amount||1} ${prettyReward(data?.reward_type)} 🎁`);
+    await Promise.all([refreshNotifications(false),loadWeeklyGift()]);
+  }catch(e){safeToast(e.message||'Gift is not ready yet.','bad');loadWeeklyGift().catch(()=>{})}
 }
 async function openNotifications(){
   document.getElementById('notificationDrawer')?.classList.remove('hidden');
@@ -193,7 +230,7 @@ async function openNotifications(){
 
 function startNotifications(){
   clearInterval(notifyTimer);
-  currentSession().then(s=>{if(!s?.user)return;refreshNotifications(false).catch(()=>{});notifyTimer=setInterval(()=>refreshNotifications(true).catch(()=>{}),15000)});
+  currentSession().then(s=>{if(!s?.user)return;recordVisit().catch(()=>{});refreshNotifications(false).catch(()=>{});notifyTimer=setInterval(()=>refreshNotifications(true).catch(()=>{}),15000)});
 }
 
 window.addEventListener('load',()=>{installNotificationUI();startNotifications()});

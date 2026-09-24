@@ -90,7 +90,7 @@ async function buildPeer(row,stream,isCaller){
   stream.getTracks().forEach(t=>pc.addTrack(t,stream));
   pc.ontrack=e=>{for(const t of e.streams[0]?.getTracks?.()||[e.track])if(!remoteStream.getTracks().some(x=>x.id===t.id))remoteStream.addTrack(t);const v=document.getElementById('veraRemoteVideo');if(v&&!v.srcObject)v.srcObject=remoteStream};
   pc.onicecandidate=e=>{if(e.candidate)insertSignal(row.id,'ice',e.candidate.toJSON()).catch(()=>{})};
-  pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected')setCallStatus('Connected');if(['failed','disconnected'].includes(pc.connectionState))setCallStatus(pc.connectionState==='failed'?'Connection failed':'Reconnecting…')};
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected'){clearTimeout(callState?.ringTimer);setCallStatus('Connected')}if(['failed','disconnected'].includes(pc.connectionState))setCallStatus(pc.connectionState==='failed'?'Connection failed. End this call and try again on another network.':'Reconnecting…')};
   callState={...(callState||{}),row,pc,stream,remoteStream,isCaller,pendingIce:[],processed:new Set()};
   const local=document.getElementById('veraLocalVideo');if(local){local.srcObject=stream;local.classList.toggle('hidden',row.kind!=='video')}
   return pc;
@@ -130,8 +130,9 @@ async function startOutgoingCall(kind){
     const {data:row,error}=await liveSb.rpc('request_veramor_call',{p_match:ctx.match.id,p_kind:kind});if(error)throw error;
     showLive(`${kind==='video'?'Video':'Voice'} call`,callMarkup(ctx.otherName,kind,'Ringing…'));
     callState={row,stream};await buildPeer(row,stream,true);bindCallControls();await subscribeCall(row);
+    callState.ringTimer=setTimeout(()=>{if(callState?.row.id===row.id&&callState.pc?.connectionState!=='connected'){setCallStatus('No answer');endCurrentCall(true).catch(()=>{})}},Math.max(1000,new Date(row.expires_at).getTime()-Date.now()));
     const offer=await callState.pc.createOffer();await callState.pc.setLocalDescription(offer);await insertSignal(row.id,'offer',offer.toJSON());
-  }catch(e){stream?.getTracks().forEach(t=>t.stop());callState=null;hideLive();liveToast(e.message||'Could not start the call.','bad')}
+  }catch(e){const started=callState?.row;clearTimeout(callState?.ringTimer);if(started)await liveSb.rpc('end_veramor_call',{p_call:started.id}).catch(()=>{});stream?.getTracks().forEach(t=>t.stop());callState=null;hideLive();liveToast(e.message||'Could not start the call.','bad')}
 }
 async function showIncomingCall(row){
   if(callState||document.getElementById('veraIncomingCall'))return;
@@ -142,7 +143,7 @@ async function showIncomingCall(row){
   const ms=Math.max(0,new Date(row.expires_at).getTime()-Date.now());setTimeout(()=>{if(document.body.contains(w))dismiss()},Math.min(ms+500,65000));
 }
 async function endCurrentCall(endServer){
-  const c=callState;if(!c){hideLive();return}callState=null;
+  const c=callState;if(!c){hideLive();return}callState=null;clearTimeout(c.ringTimer);
   if(endServer)try{await liveSb.rpc('end_veramor_call',{p_call:c.row.id})}catch(_e){}
   try{c.pc?.close()}catch(_e){};c.stream?.getTracks?.().forEach(t=>t.stop());c.remoteStream?.getTracks?.().forEach(t=>t.stop());
   if(c.signalChannel)liveSb.removeChannel(c.signalChannel);if(c.statusChannel)liveSb.removeChannel(c.statusChannel);hideLive();
@@ -155,7 +156,7 @@ async function installIncomingCalls(){
 }
 
 function youtubeId(raw){try{const u=new URL(raw);if(u.hostname==='youtu.be')return u.pathname.split('/').filter(Boolean)[0]?.slice(0,11)||null;if(/(^|\.)youtube\.com$/.test(u.hostname)||/(^|\.)youtube-nocookie\.com$/.test(u.hostname)){if(u.pathname.startsWith('/shorts/')||u.pathname.startsWith('/embed/'))return u.pathname.split('/')[2]?.slice(0,11)||null;return u.searchParams.get('v')?.slice(0,11)||null}}catch(_e){}return /^[A-Za-z0-9_-]{11}$/.test(raw)?raw:null}
-function supportedExternal(raw){try{const h=new URL(raw).hostname.toLowerCase().replace(/^www\./,'');return ['netflix.com','play.max.com','max.com','hulu.com','disneyplus.com','primevideo.com','amazon.com','peacocktv.com','paramountplus.com','tubitv.com','pluto.tv','tv.apple.com'].some(d=>h===d||h.endsWith('.'+d))}catch(_e){return false}}
+function supportedExternal(raw){try{const u=new URL(raw);if(u.protocol!=='https:')return false;const h=u.hostname.toLowerCase().replace(/^www\./,'');if(h==='amazon.com')return u.pathname.startsWith('/gp/video');return ['netflix.com','play.max.com','max.com','hulu.com','disneyplus.com','primevideo.com','peacocktv.com','paramountplus.com','tubitv.com','pluto.tv','tv.apple.com'].includes(h)}catch(_e){return false}}
 async function activeWatch(matchId){const {data,error}=await liveSb.from('watch_rooms').select('*').eq('match_id',matchId).eq('status','active').order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)throw error;return data||null}
 async function openWatchLobby(){
   const ctx=await resolveContext();if(!ctx)return liveToast('Open an active match first.','bad');
