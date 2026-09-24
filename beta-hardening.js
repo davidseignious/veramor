@@ -118,12 +118,12 @@ function recoveryDialog(){
   const wrap=document.createElement('div');
   wrap.id='passwordRecoveryOverlay';
   wrap.className='modal';
-  wrap.innerHTML='<div class="sheet"><div class="sheet-head"><strong>Set a new password</strong></div><p class="muted">Use at least 8 characters. A longer unique password is better.</p><div class="field"><label>New password</label><input id="newRecoveryPassword" class="input" type="password" minlength="8" autocomplete="new-password"></div><button id="saveRecoveryPassword" class="btn primary full">Update password</button><div id="recoveryMsg"></div></div>';
+  wrap.innerHTML='<div class="sheet"><div class="sheet-head"><strong>Set a new password</strong></div><p class="muted">Use at least 10 characters. A longer unique password is better.</p><div class="field"><label>New password</label><input id="newRecoveryPassword" class="input" type="password" minlength="10" autocomplete="new-password"></div><button id="saveRecoveryPassword" class="btn primary full">Update password</button><div id="recoveryMsg"></div></div>';
   document.body.appendChild(wrap);
   document.getElementById('saveRecoveryPassword').onclick=async()=>{
     const btn=document.getElementById('saveRecoveryPassword');
     const pwd=document.getElementById('newRecoveryPassword').value;
-    if(pwd.length<8)return notice('#recoveryMsg','Password must be at least 8 characters.','warn');
+    if(pwd.length<10)return notice('#recoveryMsg','Password must be at least 10 characters.','warn');
     btn.disabled=true;btn.textContent='Updating…';
     try{
       const {error}=await hardeningSb.auth.updateUser({password:pwd});
@@ -180,6 +180,7 @@ function installFriendBetaSignupBypass(){
     const btn=document.getElementById('authSubmit');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notice('#authMsg','Enter a valid email address.','warn');
     if(password.length<8)return notice('#authMsg','Password must be at least 8 characters.','warn');
+    if(isSignup&&password.length<10)return notice('#authMsg','New beta accounts require at least 10 characters.','warn');
     if(isSignup&&password.length>128)return notice('#authMsg','Password must be 128 characters or fewer.','warn');
     if(isSignup){
       ensureLegalSignupUi();
