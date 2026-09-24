@@ -62,7 +62,7 @@ function installWeeklyGift(){
   const settings=document.getElementById('settingsView');
   if(!settings||document.getElementById('weeklyGift'))return;
   const panel=document.createElement('div');panel.id='weeklyGift';panel.className='panel';
-  panel.innerHTML='<div class="section-title"><div><span class="pill">WEEKLY GIFT</span><h3 style="margin:7px 0 0">Your weekly progress</h3></div><span style="font-size:25px">🎁</span></div><p class="muted">Visit 7 days, connect with someone on 5 days, and send a message on 3 days within a rolling 7-day window. Claim an extra Signal when complete.</p><div id="weeklyGiftProgress" class="muted">Loading progress…</div><button id="weeklyGiftClaim" class="btn primary full" style="margin-top:12px" disabled>Claim extra Signal</button><div id="weeklyGiftMsg"></div>';
+  panel.innerHTML='<div class="section-title"><div><span class="pill">WEEKLY GIFT</span><h3 style="margin:7px 0 0">Your weekly progress</h3></div><span style="font-size:25px">🎁</span></div><p class="muted">Visit 7 days, connect with someone on 5 days, and send a message on 3 days within a rolling 7-day window. Your weekly gift can include a Super Like, Spotlight, Priority Message, or 1 Rewind.</p><div id="weeklyGiftProgress" class="muted">Loading progress…</div><button id="weeklyGiftClaim" class="btn primary full" style="margin-top:12px" disabled>Claim weekly gift</button><div id="weeklyGiftMsg"></div>';
   const danger=settings.querySelector('.danger-zone');
   if(danger)settings.insertBefore(panel,danger);else settings.appendChild(panel);
   document.getElementById('weeklyGiftClaim').onclick=()=>claimGift(null);
@@ -76,12 +76,12 @@ async function loadWeeklyGift(){
   const s=await currentSession();if(!s?.user)return;
   const [{data:status,error},{data:wallet}]=await Promise.all([
     notifySb.rpc('weekly_reward_status'),
-    notifySb.from('reward_wallets').select('super_likes').eq('user_id',s.user.id).maybeSingle()
+    notifySb.from('reward_wallets').select('super_likes,spotlights,priority_messages,rewinds').eq('user_id',s.user.id).maybeSingle()
   ]);
   if(error){root.textContent=error.message;return}
-  root.innerHTML=`<div class="notice">Visits ${Number(status.login_days)||0}/7 · Connect days ${Number(status.swipe_days)||0}/5 · Message days ${Number(status.chat_days)||0}/3</div><p>Extra Signals available: <strong>${Number(wallet?.super_likes)||0}</strong>. A Signal uses your daily allowance first, then one earned extra.</p>`;
+  root.innerHTML=`<div class="notice">Visits ${Number(status.login_days)||0}/7 · Connect days ${Number(status.swipe_days)||0}/5 · Message days ${Number(status.chat_days)||0}/3</div><p>Next gift: <strong>${prettyReward(status.next_reward)}</strong>. Rewind credits: <strong>${Number(wallet?.rewinds)||0}</strong> · Extra Signals: <strong>${Number(wallet?.super_likes)||0}</strong> · Spotlights: <strong>${Number(wallet?.spotlights)||0}</strong> · Priority messages: <strong>${Number(wallet?.priority_messages)||0}</strong>.</p><p class="muted">Your first rewind is free once. After that, every rewind uses a purchased or weekly-gift rewind credit.</p>`;
   button.disabled=!status.eligible;
-  button.textContent=status.already_claimed?'Gift claimed for this week':status.eligible?'Claim extra Signal':'Keep going to unlock';
+  button.textContent=status.already_claimed?'Gift claimed for this week':status.eligible?'Claim '+prettyReward(status.next_reward):'Keep going to unlock';
 }
 
 async function recordVisit(){
