@@ -20,7 +20,7 @@ async function installFilters(){
       <div class="field"><label>Maximum distance</label><select id="filterDistance"><option value="5">5 miles</option><option value="10">10 miles</option><option value="25">25 miles</option><option value="50">50 miles</option><option value="100">100 miles</option><option value="250">250 miles</option></select></div>
     </div>
     <div class="vera-premium-filter-head"><div><strong>Advanced filters</strong><small>Relationship goal, lifestyle, height and activity filters</small></div><span class="pill premium">PREMIUM</span></div>
-    <div id="premiumFilterLock" class="notice warn hidden">Advanced filters require VERAMOR Premium. Age and distance stay free.</div>
+    <div id="premiumFilterLock" class="notice warn hidden">Advanced filters require VERAMOR Premium. Age and distance stay free. <button class="btn" type="button" id="viewPremiumBilling" style="margin-top:8px">View VERAMOR Premium</button></div>
     <div id="premiumFilters" class="grid">
       <div class="field"><label>Relationship goal</label><select id="filterIntent"></select></div>
       <div class="field"><label>Cigarettes</label><select id="filterSmoking"></select></div>
@@ -44,6 +44,7 @@ async function installFilters(){
   document.getElementById('filterHasChildren').innerHTML=options(['Yes','No','Prefer not to say']);
   document.getElementById('filterWantsChildren').innerHTML=options(['Yes','No','Open to it','Not sure','Prefer not to say']);
   document.getElementById('toggleFilters').onclick=()=>document.getElementById('filterBody').classList.toggle('hidden');
+  document.getElementById('viewPremiumBilling').onclick=()=>{document.querySelector('#bottomNav button[data-view="settingsView"]')?.click();setTimeout(()=>document.getElementById('veramorBilling')?.scrollIntoView({behavior:'smooth',block:'center'}),120)};
   document.getElementById('saveDiscoveryFilters').onclick=saveFilters;
   await loadFilters();
 }
