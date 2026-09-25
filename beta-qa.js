@@ -10,7 +10,7 @@ if(!document.querySelector('link[href^="beta-legal-compliance.css"]')){
 }
 
 if(new URLSearchParams(location.search).get('qa')==='1'){
-  const sb=createClient('https://rfcoworvfqcqallgpozn.supabase.co','sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const sb=createClient('https://rfcoworvfqcqallgpozn.supabase.co','sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF',{auth:{persistSession:true,autoRefreshToken:false,detectSessionInUrl:true}});
   const root=document.createElement('aside');root.id='veraQa';root.innerHTML='<div class="vera-qa-head"><strong>VERAMOR Beta QA</strong><button id="veraQaClose">×</button></div><p>Run this in both tester sessions. It checks the live account path without creating fake matches or messages.</p><button class="btn primary full" id="veraQaRun">Run checks</button><div id="veraQaRows"></div>';
   document.body.appendChild(root);
   const style=document.createElement('style');style.textContent='#veraQa{position:fixed;z-index:300;right:12px;bottom:84px;width:min(390px,calc(100vw - 24px));max-height:70vh;overflow:auto;padding:14px;border-radius:18px;background:#121017;border:1px solid rgba(255,255,255,.14);box-shadow:0 24px 80px #000a;color:#fff}#veraQa p{font-size:11px;line-height:1.45;color:#b8afbf}.vera-qa-head{display:flex;align-items:center;justify-content:space-between}.vera-qa-head button{border:0;background:transparent;color:#fff;font-size:20px}.vera-qa-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:11px}.vera-qa-row b.ok{color:#63dba2}.vera-qa-row b.warn{color:#f2c56f}.vera-qa-row b.bad{color:#ff8a9b}';document.head.appendChild(style);
