@@ -2,7 +2,7 @@
 // This intentionally keeps Connect / Skip / Signal as explicit taps rather than copying swipe-to-like behavior.
 (function(){
   const CARD='.profile-card';
-  const IGNORE='button,a,input,textarea,select,video,[role="button"],.swipe-actions';
+  const IGNORE='button,a,input,textarea,select,video,[role="button"],.swipe-actions,.vera-photo-carousel';
   const THRESHOLD=72;
   const MAX_DRAG=104;
 
