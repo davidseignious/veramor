@@ -2,3 +2,31 @@
 
 .age-badge{position:absolute;right:13px;top:13px;z-index:2;background:#ff4f7b;color:#fff;padding:9px 13px;border-radius:999px;font-weight:900;letter-spacing:.06em;box-shadow:0 5px 18px #0008}.lifestyle-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}.lifestyle-facts>div{background:#211d29;border:1px solid #39313f;border-radius:12px;padding:10px}.lifestyle-facts small{display:block;color:var(--muted);margin-bottom:4px}.lifestyle-facts strong{font-size:14px}
 .ig-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.ig-picker label{border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer}.ig-picker img{width:100%;aspect-ratio:1;object-fit:cover}.ig-picker span{display:block;padding:6px;font-size:12px}.ig-picker input{accent-color:var(--rose)}
+
+
+/* Preserve the user's uploaded framing. Demo cards can stay edge-to-edge. */
+.profile-media.real-user-media{
+  background:#0b0910;
+}
+.profile-media.real-user-media img{
+  object-fit:contain;
+  object-position:center center;
+  background:#0b0910;
+}
+.profile-media.demo-user-media img{
+  object-fit:cover;
+  object-position:center center;
+}
+#profileModalBody.real-user-profile .photo-grid .photo{
+  aspect-ratio:auto;
+  background:#0b0910;
+}
+#profileModalBody.real-user-profile .photo-grid .photo img{
+  width:100%;
+  height:auto;
+  max-height:78vh;
+  aspect-ratio:auto;
+  object-fit:contain;
+  object-position:center center;
+  background:#0b0910;
+}
