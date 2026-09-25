@@ -28,6 +28,9 @@ async function mediaForProfile(p){const id=p.id;let imageRows=[];try{imageRows=a
   const urls=[];for(const f of imageRows){if(!f?.name||!f.id)continue;const u=await signed('profile-media',`${id}/${f.name}`);if(u)urls.push({path:`${id}/${f.name}`,url:u,name:f.name})}
   let video=null;if(p.intro_video_path)video=await signed('profile-videos',p.intro_video_path);
   if(!urls.length&&p.avatar_url)urls.push({path:null,url:p.avatar_url,name:'profile'});
+  if(p.avatar_path&&urls.length){
+    urls.sort((a,b)=>Number(b.path===p.avatar_path)-Number(a.path===p.avatar_path));
+  }
   return {photos:urls,video};
 }
 
