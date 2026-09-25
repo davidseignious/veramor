@@ -211,9 +211,128 @@ async function enterApp(){
 async function loadDiscovery(priorityId=null){const {data,error}=await sb.rpc('get_discovery_candidates');if(error)throw error;discovery=(data||[]).map(x=>({...x.profile,distance_miles:x.distance_miles}));if(priorityId){const i=discovery.findIndex(x=>x.id===priorityId);if(i>0){const [p]=discovery.splice(i,1);discovery.unshift(p)}}deckIndex=0;await renderDeck();await refreshRewindStatus()}
 async function refreshRewindStatus(){const b=$('#undoPass');if(!b||!user)return;try{const {data,error}=await sb.rpc('rewind_status');if(error)throw error;const credits=Number(data?.rewind_credits)||0;b.dataset.rewindCredits=String(credits);b.dataset.freeAvailable=data?.free_available?'1':'0';b.title=data?.free_available?'Your first rewind is free.':credits>0?`${credits} rewind credit${credits===1?'':'s'} available.`:'Your free rewind is used. Additional rewinds require a paid credit or a weekly-gift rewind.';if(!lastPassedId){b.textContent=data?.free_available?'↶ Undo · 1 free':credits>0?`↶ Undo · ${credits} credit${credits===1?'':'s'}`:'↶ Undo · credit';b.disabled=true}else{b.textContent=data?.free_available?'↶ Undo · FREE':credits>0?`↶ Undo · ${credits}`:'↶ Undo · paid/gift';b.disabled=false}}catch(_e){}}
 async function decorate(p){if(p._media)return p;try{p._media=await mediaForProfile(p)}catch(e){p._media={photos:p.avatar_url?[{url:p.avatar_url}]:[],video:null}}return p}
+
+function discoveryCarouselMarkup(p,m){
+  const photoList=(m.photos||[]).filter(x=>x?.url);
+  if(!photoList.length){
+    if(m.video)return `<video class="vera-discovery-fallback-video" src="${esc(m.video)}" controls playsinline preload="metadata"></video>`;
+    return '<div class="vera-discovery-media-empty"><span>Photo unavailable</span></div>';
+  }
+  const count=photoList.length;
+  return `<div class="vera-photo-carousel" id="veraPhotoCarousel" aria-label="${esc(p.display_name)} photo gallery">
+    <img id="veraDiscoveryPhoto" src="${esc(photoList[0].url)}" alt="${esc(p.display_name)} profile photo 1 of ${count}" draggable="false">
+    ${count>1?`<div class="vera-photo-progress" id="veraPhotoProgress" aria-hidden="true">${photoList.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>
+      <button class="vera-photo-nav prev" id="veraPhotoPrev" type="button" aria-label="Previous photo">‹</button>
+      <button class="vera-photo-nav next" id="veraPhotoNext" type="button" aria-label="Next photo">›</button>
+      <span class="vera-photo-count" id="veraPhotoCount">1 / ${count}</span>`:''}
+    ${m.video?`<button class="vera-intro-video-btn" id="veraIntroVideoBtn" type="button" aria-label="Play intro video">▶ Intro</button>`:''}
+  </div>`;
+}
+
+function installDiscoveryCarousel(p,m){
+  const host=document.getElementById('veraPhotoCarousel');
+  const img=document.getElementById('veraDiscoveryPhoto');
+  if(!host||!img)return;
+  const photos=(m.photos||[]).filter(x=>x?.url);
+  let index=0;
+  let suppressClick=false;
+  let startX=0,startY=0,pointerId=null;
+
+  const progress=()=>Array.from(document.querySelectorAll('#veraPhotoProgress span'));
+  const prev=document.getElementById('veraPhotoPrev');
+  const next=document.getElementById('veraPhotoNext');
+  const count=document.getElementById('veraPhotoCount');
+  const intro=document.getElementById('veraIntroVideoBtn');
+  const profileMedia=host.closest('.profile-media');
+
+  function preload(i){
+    const u=photos[i]?.url;
+    if(!u)return;
+    const im=new Image();im.src=u;
+  }
+  function show(i){
+    if(!photos.length)return;
+    index=Math.max(0,Math.min(photos.length-1,i));
+    img.src=photos[index].url;
+    img.alt=`${p.display_name||'Profile'} profile photo ${index+1} of ${photos.length}`;
+    if(count)count.textContent=`${index+1} / ${photos.length}`;
+    progress().forEach((dot,n)=>dot.classList.toggle('on',n===index));
+    if(prev){prev.disabled=index===0;prev.classList.toggle('disabled',index===0)}
+    if(next){next.disabled=index===photos.length-1;next.classList.toggle('disabled',index===photos.length-1)}
+    preload(index+1);
+    preload(index-1);
+  }
+  function move(dir){
+    const target=index+dir;
+    if(target<0||target>=photos.length)return;
+    show(target);
+  }
+
+  prev?.addEventListener('click',e=>{e.stopPropagation();move(-1)});
+  next?.addEventListener('click',e=>{e.stopPropagation();move(1)});
+
+  host.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button,video'))return;
+    pointerId=e.pointerId;startX=e.clientX;startY=e.clientY;suppressClick=false;
+  });
+  host.addEventListener('pointerup',e=>{
+    if(pointerId!==e.pointerId)return;
+    const dx=e.clientX-startX,dy=e.clientY-startY;
+    pointerId=null;
+    if(Math.abs(dx)>46&&Math.abs(dx)>Math.abs(dy)+12){
+      suppressClick=true;
+      move(dx<0?1:-1);
+      setTimeout(()=>{suppressClick=false},80);
+    }
+  });
+  host.addEventListener('pointercancel',()=>{pointerId=null});
+
+  host.addEventListener('click',e=>{
+    if(suppressClick||e.target.closest('button,video')||photos.length<2)return;
+    const r=host.getBoundingClientRect();
+    const x=e.clientX-r.left;
+    if(x<r.width*.38)move(-1);
+    else if(x>r.width*.62)move(1);
+  });
+
+  if(intro&&m.video){
+    intro.addEventListener('click',e=>{
+      e.stopPropagation();
+      const active=host.classList.toggle('playing-intro');
+      const existing=document.getElementById('veraDiscoveryIntroVideo');
+      if(active){
+        img.hidden=true;
+        if(prev)prev.hidden=true;if(next)next.hidden=true;if(count)count.hidden=true;
+        document.getElementById('veraPhotoProgress')?.classList.add('hidden');
+        const v=document.createElement('video');
+        v.id='veraDiscoveryIntroVideo';v.src=m.video;v.poster=photos[index]?.url||'';v.controls=true;v.playsInline=true;v.autoplay=true;v.preload='metadata';
+        host.insertBefore(v,host.firstChild);
+        intro.textContent='Photos';
+        intro.setAttribute('aria-label','Return to photos');
+        profileMedia?.classList.add('vera-intro-playing');
+        v.play().catch(()=>{});
+      }else{
+        existing?.pause();existing?.remove();img.hidden=false;
+        if(prev)prev.hidden=false;if(next)next.hidden=false;if(count)count.hidden=false;
+        document.getElementById('veraPhotoProgress')?.classList.remove('hidden');
+        intro.textContent='▶ Intro';
+        intro.setAttribute('aria-label','Play intro video');
+        profileMedia?.classList.remove('vera-intro-playing');
+      }
+    });
+  }
+  show(0);
+}
+
 async function renderDeck(){const root=$('#deck');if(!discovery.length||deckIndex>=discovery.length){root.innerHTML='<div class="panel empty"><div class="heart">♥</div><h2>You’re caught up.</h2><p class="muted">No more verified profiles fit your discovery settings right now. More people will appear as friends complete verification.</p><button class="btn" id="deckRefresh">Check again</button></div>';$('#deckRefresh').onclick=()=>loadDiscovery().catch(e=>alert(e.message));return}
   if(viewMode!=='single'){const count=viewMode==='duo'?2:3;const group=discovery.slice(deckIndex,deckIndex+count);for(const p of group)await decorate(p);root.innerHTML=`<div class="panel"><span class="pill">${viewMode==='duo'?'2 MAN':'TRIO'} BETA</span><h3>Tap who you want to see 1-on-1</h3><p class="muted">Group discovery lets you browse together while still choosing an individual connection.</p><div class="group ${count===2?'two':'three'}">${group.map((p,i)=>`<button class="mini" data-group-person="${i}"><img src="${esc(p._media.photos[0]?.url||'')}" alt="${esc(p.display_name)}"><div>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}${p.is_demo_profile?' · AI DEMO':''}</div></button>`).join('')}</div><button class="btn full" id="passGroup" style="margin-top:10px">Pass group</button></div>`;$$('[data-group-person]').forEach(b=>b.onclick=()=>{deckIndex+=Number(b.dataset.groupPerson);viewMode='single';syncModeButtons();renderDeck()});$('#passGroup').onclick=()=>passGroup(group);return}
-  const p=await decorate(discovery[deckIndex]);const m=p._media||{photos:[],video:null};const media=m.video?`<video src="${esc(m.video)}" poster="${esc(m.photos[0]?.url||'')}" controls playsinline preload="metadata"></video>`:`<img src="${esc(m.photos[0]?.url||'')}" alt="${esc(p.display_name)}">`;root.innerHTML=`<article class="card profile-card" data-profile-id="${esc(p.id)}"><div class="profile-media ${p.is_demo_profile?'demo-user-media':'real-user-media'}">${media}<span class="pill ${p.is_demo_profile?'warn':'ok'} profile-badge">${p.is_demo_profile?'AI DEMO · NOT A REAL PERSON':'VERIFIED BETA'}</span>${formatAge(p)?`<span class="age-badge" aria-label="Age ${formatAge(p)}">AGE ${formatAge(p)}</span>`:''}<div class="profile-overlay"><h2>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}</h2><div>${esc(p.occupation||'')}${p.city?` · ${esc(p.city)}`:''}${p.distance_miles!=null?` · ${esc(p.distance_miles)} mi`:''}</div><div class="tags">${(p.interests||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div></div>${m.photos.length>1?`<span class="vera-photo-count">1 / ${m.photos.length}</span>`:''}</div><div class="details">${discoveryQuickFacts(p)}${p.is_demo_profile?'<div class="notice warn"><strong>AI demo profile</strong><br>This profile is synthetic filler for beta testing. It is not a real person and cannot become a real match.</div>':''}<p>${esc(p.bio||'')}</p>${lifestyleHtml(p)}<div class="actions"><button class="btn" id="fullProfileBtn">View full profile</button><button class="btn" id="safetyBtn">•••</button></div></div><div class="swipe-actions"><button class="btn" id="passBtn">✕</button><button class="btn primary" id="likeBtn">♥</button><button class="btn" id="superBtn">★</button></div></article>`;$('#passBtn').onclick=()=>passCurrent(p);$('#likeBtn').onclick=()=>likeCurrent(p,false);$('#superBtn').onclick=()=>likeCurrent(p,true);$('#fullProfileBtn').onclick=()=>openFullProfile(p);$('#safetyBtn').onclick=()=>openSafety(p)}
+  const p=await decorate(discovery[deckIndex]);
+  const m=p._media||{photos:[],video:null};
+  const media=discoveryCarouselMarkup(p,m);
+  root.innerHTML=`<article class="card profile-card" data-profile-id="${esc(p.id)}"><div class="profile-media ${p.is_demo_profile?'demo-user-media':'real-user-media'}">${media}<span class="pill ${p.is_demo_profile?'warn':'ok'} profile-badge">${p.is_demo_profile?'AI DEMO · NOT A REAL PERSON':'VERIFIED BETA'}</span>${formatAge(p)?`<span class="age-badge" aria-label="Age ${formatAge(p)}">AGE ${formatAge(p)}</span>`:''}<div class="profile-overlay"><h2>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}</h2><div>${esc(p.occupation||'')}${p.city?` · ${esc(p.city)}`:''}${p.distance_miles!=null?` · ${esc(p.distance_miles)} mi`:''}</div><div class="tags">${(p.interests||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div></div></div><div class="details">${discoveryQuickFacts(p)}${p.is_demo_profile?'<div class="notice warn"><strong>AI demo profile</strong><br>This profile is synthetic filler for beta testing. It is not a real person and cannot become a real match.</div>':''}<p>${esc(p.bio||'')}</p>${lifestyleHtml(p)}<div class="actions"><button class="btn" id="fullProfileBtn">View full profile</button><button class="btn" id="safetyBtn">•••</button></div></div><div class="swipe-actions"><button class="btn" id="passBtn">✕</button><button class="btn primary" id="likeBtn">♥</button><button class="btn" id="superBtn">★</button></div></article>`;
+  installDiscoveryCarousel(p,m);
+  $('#passBtn').onclick=()=>passCurrent(p);$('#likeBtn').onclick=()=>likeCurrent(p,false);$('#superBtn').onclick=()=>likeCurrent(p,true);$('#fullProfileBtn').onclick=()=>openFullProfile(p);$('#safetyBtn').onclick=()=>openSafety(p)
+}
 function syncModeButtons(){$$('#modeButtons [data-mode]').forEach(b=>b.classList.toggle('primary',b.dataset.mode===viewMode))}
 $$('#modeButtons [data-mode]').forEach(b=>b.onclick=()=>{viewMode=b.dataset.mode;syncModeButtons();renderDeck()});
 async function nextCard(){deckIndex++;await renderDeck()}
