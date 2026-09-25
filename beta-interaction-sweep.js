@@ -70,6 +70,32 @@
     });
   }
 
+  function audit(){
+    const tabs=[...document.querySelectorAll('#bottomNav button[data-view]')].map(b=>({
+      view:b.dataset.view,
+      targetExists:!!document.getElementById(b.dataset.view),
+      disabled:!!b.disabled
+    }));
+    const brokenLocalLinks=[...document.querySelectorAll('a[href]')].filter(a=>{
+      const raw=(a.getAttribute('href')||'').trim();
+      if(!raw||/^https?:|^mailto:|^tel:|^#/.test(raw))return false;
+      try{
+        const u=new URL(raw,location.href);
+        if(u.origin!==location.origin)return false;
+        const page=u.pathname.split('/').pop()||'index.html';
+        return page.includes('.')&&!LOCAL_PAGES.has(page)&&!page.match(/\.(svg|png|jpg|jpeg|webp|css|js|webmanifest)$/i);
+      }catch(_e){return true}
+    }).map(a=>a.getAttribute('href'));
+    const result={tabs,brokenLocalLinks,duplicateIds:[]};
+    const seen=new Set();
+    document.querySelectorAll('[id]').forEach(el=>{
+      if(seen.has(el.id)&&!result.duplicateIds.includes(el.id))result.duplicateIds.push(el.id);
+      seen.add(el.id);
+    });
+    return result;
+  }
+  window.VERAMOR_INTERACTION_AUDIT=audit;
+
   function repair(){
     if(repairing)return;repairing=true;
     try{repairNav();repairLinks();repairButtons();closeStrayOverlays()}finally{repairing=false}
