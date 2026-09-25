@@ -31,3 +31,20 @@
 .streaming-privacy-note{margin-top:12px;padding:12px 14px;border:1px solid rgba(117,220,167,.32);border-radius:14px;background:rgba(38,130,87,.10);font-size:12px;line-height:1.5}
 .streaming-privacy-note strong{display:block;margin-bottom:3px}
 @media(max-width:620px){#profileModal .sheet{max-height:94vh}.profile-story-hero{min-height:300px}.profile-story-hero img{height:58vh}.profile-story-identity h2{font-size:26px}.profile-story-facts{grid-template-columns:1fr}}
+
+
+/* Real user galleries retain original framing. */
+#profileModalBody.real-user-profile .profile-story-hero{
+  min-height:0;
+  background:#0b0910;
+}
+#profileModalBody.real-user-profile .profile-story-hero img,
+#profileModalBody.real-user-profile .profile-story-photo img{
+  width:100%;
+  height:auto;
+  max-height:78vh;
+  aspect-ratio:auto;
+  object-fit:contain;
+  object-position:center center;
+  background:#0b0910;
+}
