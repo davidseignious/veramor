@@ -151,7 +151,7 @@
           <div class="demo-disclosure">${p.demo?'AI DEMO · NOT A REAL USER':'REAL USER · ADMIN VIEW'}</div>
         </div>
         <div class="premium-profile-detail">
-          <div class="detail-top"><span class="trust-chip">♢ Presence-style demo</span></div>
+          <div class="detail-top"><span class="trust-chip">${p.demo?'♢ Demo preview':'✓ Verified real profile'}</span></div>
           <div class="profile-detail-head"><div><div class="profile-name">${esc(p.name)}${p.age?', '+esc(p.age):''}</div><div class="profile-meta">${esc(p.job||'')}</div></div><div class="presence-score"><b>${p.demo?'92':'LIVE'}</b><small>${p.demo?'fit':'status'}</small></div></div>
           <div class="location-line"><span class="pin">●</span>${esc(p.city||'Chicago')}<span>·</span><b>${esc(p.intent||'Looking for something real')}</b></div>
           <div class="profile-divider"></div>
