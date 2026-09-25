@@ -151,4 +151,38 @@ async function signOut(){clearInterval(chatTimer);await sb.auth.signOut();sessio
 $('#topSignOut').onclick=signOut;
 
 sb.auth.onAuthStateChange((event,s)=>{session=s;user=s?.user||null;if(event==='SIGNED_OUT'){showScreen('authScreen')}});
-(async()=>{try{const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUser();else showScreen('authScreen')}catch(e){console.error(e);showScreen('authScreen');message('#authMsg','VERAMOR could not load. Refresh and try again.','bad')}})();
+
+async function routeUserWithRetry(){
+  let lastError=null;
+  for(let attempt=0;attempt<4;attempt++){
+    try{return await routeUser()}
+    catch(e){
+      lastError=e;
+      console.warn('VERAMOR account load retry',attempt+1,e);
+      if(attempt<3)await new Promise(r=>setTimeout(r,[400,900,1800][attempt]));
+    }
+  }
+  throw lastError||new Error('Could not load account.');
+}
+
+(async()=>{
+  try{
+    const {data:{session:s},error}=await sb.auth.getSession();
+    if(error)throw error;
+    session=s;user=s?.user||null;
+    if(user){
+      try{await routeUserWithRetry()}
+      catch(e){
+        console.error(e);
+        showScreen('waitingScreen');
+        const host=document.getElementById('waitMsg');
+        if(host)host.innerHTML='<div class="notice warn">You are signed in, but VERAMOR could not finish loading your account. <button class="btn" id="retryAccountLoad" type="button">Retry</button></div>';
+        document.getElementById('retryAccountLoad')?.addEventListener('click',()=>routeUserWithRetry().catch(err=>console.error(err)));
+      }
+    }else showScreen('authScreen');
+  }catch(e){
+    console.error(e);
+    showScreen('authScreen');
+    message('#authMsg','VERAMOR could not load. Refresh and try again.','bad');
+  }
+})();
