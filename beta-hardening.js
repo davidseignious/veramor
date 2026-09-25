@@ -209,11 +209,16 @@ function installFriendBetaSignupBypass(){
       if(error)throw error;
       signedIn=true;
       if(isSignup)await persistLegalAcceptance(data?.user);
-      await ensurePostLoginReady();
-      notice('#authMsg',isSignup?'Account created. Opening your profile…':'Signed in. Opening your profile…','ok');
-      setTimeout(()=>location.reload(),180);
+      let setupWarning=null;
+      try{await ensurePostLoginReady()}catch(setupErr){
+        setupWarning=friendlyAuthError(setupErr);
+        console.warn('VERAMOR post-login setup will retry after reload',setupErr);
+      }
+      notice('#authMsg',setupWarning
+        ? 'Signed in. Finishing account setup…'
+        : (isSignup?'Account created. Opening your profile…':'Signed in. Opening your profile…'),'ok');
+      setTimeout(()=>location.reload(),250);
     }catch(err){
-      if(signedIn)try{await hardeningSb.auth.signOut()}catch(_e){}
       const text=friendlyAuthError(err);
       notice('#authMsg',text,'bad');
       if(btn){btn.disabled=false;btn.textContent=old}
