@@ -68,6 +68,31 @@
       if(b.id==='authSubmit'||b.closest('#authForm'))return;
       b.type='button';
     });
+    ['editLiveProfile','editProfile'].forEach(id=>{
+      const b=document.getElementById(id);
+      if(!b||b.dataset.editorFallback==='1')return;
+      b.dataset.editorFallback='1';
+      b.addEventListener('click',()=>setTimeout(()=>{
+        const onboarding=document.getElementById('onboardingScreen');
+        if(onboarding?.classList.contains('hidden')&&typeof window.VERAMOR_OPEN_PROFILE_EDITOR==='function'){
+          window.VERAMOR_OPEN_PROFILE_EDITOR().catch?.(e=>console.error('Profile editor fallback failed',e));
+        }
+      },350));
+    });
+  }
+
+  function repairImages(){
+    document.querySelectorAll('img').forEach(img=>{
+      if(!img.decoding)img.decoding='async';
+      if(!img.loading&&!img.closest('.profile-media'))img.loading='lazy';
+      if(img.dataset.veraImageGuard==='1')return;
+      img.dataset.veraImageGuard='1';
+      img.addEventListener('error',()=>{
+        img.classList.add('vera-image-error');
+        img.setAttribute('aria-label',img.alt||'Photo unavailable');
+      });
+      img.addEventListener('load',()=>img.classList.remove('vera-image-error'));
+    });
   }
 
   function audit(){
@@ -98,7 +123,7 @@
 
   function repair(){
     if(repairing)return;repairing=true;
-    try{repairNav();repairLinks();repairButtons();closeStrayOverlays()}finally{repairing=false}
+    try{repairNav();repairLinks();repairButtons();repairImages();closeStrayOverlays()}finally{repairing=false}
   }
 
   document.addEventListener('click',e=>{
