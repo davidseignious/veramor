@@ -28,6 +28,7 @@ function buildProfileStory(){
   const bio=Array.from(body.children).find(x=>x.tagName==='P'&&x!==meta&&!x.closest('.vera-prompt-profile-section'));
   const tags=body.querySelector(':scope > .tags');
   const looking=body.querySelector(':scope > .prompt');
+  const lifestyle=body.querySelector(':scope > .vera-profile-details, :scope > .lifestyle-facts');
   const promptSection=body.querySelector('.vera-prompt-profile-section');
   const promptCards=promptSection?Array.from(promptSection.querySelectorAll('.vera-prompt-card,.vera-prompt-mini')):[];
 
@@ -39,6 +40,7 @@ function buildProfileStory(){
 
   const about=document.createElement('section');about.className='vera-beta-story-card';about.innerHTML='<small class="vera-beta-kicker">ABOUT ME</small>';
   if(bio)about.appendChild(bio);if(tags)about.appendChild(tags);story.appendChild(about);
+  if(lifestyle){lifestyle.classList.add('vera-beta-story-details');story.appendChild(lifestyle)}
 
   const max=Math.max(photos.length,promptCards.length);
   for(let i=0;i<max;i++){
