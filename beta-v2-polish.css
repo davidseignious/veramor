@@ -111,3 +111,74 @@
   .vera-discovery-facts{gap:6px}
   .vera-discovery-facts span{padding:7px 9px;font-size:10px}
 }
+
+
+/* Discovery photo carousel */
+.vera-photo-carousel{
+  position:absolute;inset:0;overflow:hidden;
+  touch-action:pan-y;user-select:none;background:#0b0910
+}
+.vera-photo-carousel>img,
+.vera-photo-carousel>video{
+  width:100%;height:100%;display:block;
+  object-position:center center;background:#0b0910
+}
+.profile-media.real-user-media .vera-photo-carousel>img{object-fit:contain}
+.profile-media.demo-user-media .vera-photo-carousel>img{object-fit:cover}
+.vera-photo-carousel>video{object-fit:contain}
+.vera-photo-progress{
+  position:absolute;z-index:9;left:12px;right:12px;top:10px;
+  display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;
+  pointer-events:none
+}
+.vera-photo-progress span{
+  height:3px;border-radius:99px;background:rgba(255,255,255,.28);
+  box-shadow:0 1px 4px rgba(0,0,0,.35)
+}
+.vera-photo-progress span.on{background:#fff}
+.vera-photo-nav{
+  position:absolute;z-index:11;top:50%;transform:translateY(-50%);
+  width:38px;height:54px;border:0;border-radius:16px;
+  display:grid;place-items:center;
+  background:rgba(7,6,10,.42);color:#fff;
+  backdrop-filter:blur(8px);
+  font-size:30px;line-height:1;cursor:pointer;
+  transition:opacity .15s ease,background .15s ease,transform .15s ease
+}
+.vera-photo-nav.prev{left:8px}.vera-photo-nav.next{right:8px}
+.vera-photo-nav:active{transform:translateY(-50%) scale(.94)}
+.vera-photo-nav.disabled,.vera-photo-nav:disabled{opacity:.18;pointer-events:none}
+.vera-photo-count{
+  position:absolute;right:12px;bottom:13px;z-index:11;
+  padding:7px 10px;border-radius:999px;
+  background:rgba(0,0,0,.60);backdrop-filter:blur(8px);
+  color:#fff;font-size:10px;font-weight:900;letter-spacing:.04em;
+  border:1px solid rgba(255,255,255,.12)
+}
+.vera-intro-video-btn{
+  position:absolute;z-index:12;left:12px;bottom:13px;
+  min-height:32px;padding:7px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.58);backdrop-filter:blur(8px);
+  color:#fff;font-size:10px;font-weight:900;cursor:pointer
+}
+.vera-intro-playing .profile-overlay{
+  opacity:0;pointer-events:none;transition:opacity .15s ease
+}
+.vera-intro-playing .profile-badge,
+.vera-intro-playing .age-badge{opacity:.35}
+.vera-discovery-media-empty{
+  width:100%;height:100%;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 30%,rgba(138,108,255,.18),#0b0910 68%);
+  color:var(--muted);font-size:12px
+}
+.vera-discovery-fallback-video{width:100%;height:100%;object-fit:contain;background:#0b0910}
+@media(max-width:560px){
+  .vera-photo-nav{width:34px;height:48px;font-size:27px;background:rgba(7,6,10,.34)}
+  .vera-photo-progress{left:9px;right:9px;top:8px;gap:3px}
+  .vera-photo-count{right:10px;bottom:11px}
+  .vera-intro-video-btn{left:10px;bottom:11px}
+}
+@media(hover:none) and (pointer:coarse){
+  .vera-photo-nav{opacity:.58}
+}
