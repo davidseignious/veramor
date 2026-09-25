@@ -28,7 +28,7 @@ function toastNative(text){
 function installAppCard(){
   const host=document.getElementById('settingsView');if(!host||document.getElementById('installVeramorCard'))return;
   const card=document.createElement('div');card.id='installVeramorCard';card.className='panel vera-install-card';
-  card.innerHTML='<div class="section-title"><div style="display:flex;gap:12px;align-items:center"><img class="vera-install-icon" src="/veramor-icon.svg" alt=""><div><span class="pill">APP MODE</span><h3 style="margin:7px 0 0">Put VERAMOR on your Home Screen</h3></div></div></div><p class="muted">Launch full-screen like an app, keep the bottom tab bar, and get the best mobile experience.</p><button class="btn primary full" id="installVeramorBtn">Install VERAMOR</button><div id="installVeramorHelp" class="muted" style="margin-top:10px;font-size:12px"></div>';
+  card.innerHTML='<div class="section-title"><div style="display:flex;gap:12px;align-items:center"><img class="vera-install-icon" src="veramor-icon.svg" alt=""><div><span class="pill">APP MODE</span><h3 style="margin:7px 0 0">Put VERAMOR on your Home Screen</h3></div></div></div><p class="muted">Launch full-screen like an app, keep the bottom tab bar, and get the best mobile experience.</p><button class="btn primary full" id="installVeramorBtn">Install VERAMOR</button><div id="installVeramorHelp" class="muted" style="margin-top:10px;font-size:12px"></div>';
   const first=host.querySelector('.panel');first?host.insertBefore(card,first):host.appendChild(card);
   document.getElementById('installVeramorBtn').onclick=promptInstall;
   updateInstallCard();
