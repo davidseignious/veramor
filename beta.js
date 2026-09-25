@@ -71,7 +71,7 @@ $('#authForm').onsubmit=async e=>{e.preventDefault();const btn=$('#authSubmit');
     const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;
     if(!data.session){message('#authMsg','Account created. Check your email to confirm it, then return here to log in.','ok');return}
   }else{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
-  const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUser();
+  const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUserWithRetry();
 }catch(err){message('#authMsg',err.message||'Could not continue.','bad')}finally{setBusy(btn,false)}};
 
 async function loadOnboarding(){
@@ -161,9 +161,24 @@ $('#uploadIntro').onclick=async()=>{const btn=$('#uploadIntro'),file=$('#introVi
 
 $('#submitVerification').onclick=async()=>{const btn=$('#submitVerification');setBusy(btn,true,'Submitting…');message('#submitMsg','');try{await saveProfileDetails(false);const {data,error}=await sb.rpc('finalize_profile_setup');if(error)throw error;launchStatus=data;message('#submitMsg',data.message||'Submitted.','ok');if(data.submitted){await fetchMe();showScreen('waitingScreen')}}catch(e){message('#submitMsg',e.message,'bad')}finally{setBusy(btn,false)}};
 $('#refreshStatus').onclick=async()=>{const b=$('#refreshStatus');setBusy(b,true,'Checking…');try{await fetchMe();if(launchStatus.launch_ready){showScreen('appScreen');await enterApp()}else message('#waitMsg',profile.verification_status==='rejected'?'Verification needs changes. Edit and resubmit.':'Still awaiting verification.','warn')}catch(e){message('#waitMsg',e.message,'bad')}finally{setBusy(b,false)}};
-$('#editProfile').onclick=async()=>{showScreen('onboardingScreen');await loadOnboarding()};
+async function openProfileEditor(){
+  showScreen('onboardingScreen');
+  try{await loadOnboarding();window.dispatchEvent(new CustomEvent('veramor:profile-editor-open'))}
+  catch(e){console.error('VERAMOR profile editor load failed',e);message('#profileMsg',e.message||'Could not load your profile. Try again.','bad')}
+}
+$('#editProfile').onclick=openProfileEditor;
 
-async function enterApp(){await Promise.all([loadDiscovery(),loadMatches(),loadSettings(),renderMyProfile()]);showView('discoverView')}
+async function enterApp(){
+  const tasks=[
+    ['discovery',loadDiscovery],
+    ['matches',loadMatches],
+    ['settings',loadSettings],
+    ['profile',renderMyProfile]
+  ];
+  const results=await Promise.allSettled(tasks.map(([,fn])=>fn()));
+  results.forEach((result,i)=>{if(result.status==='rejected')console.error('VERAMOR '+tasks[i][0]+' load failed',result.reason)});
+  showView('discoverView');
+}
 async function loadDiscovery(priorityId=null){const {data,error}=await sb.rpc('get_discovery_candidates');if(error)throw error;discovery=(data||[]).map(x=>({...x.profile,distance_miles:x.distance_miles}));if(priorityId){const i=discovery.findIndex(x=>x.id===priorityId);if(i>0){const [p]=discovery.splice(i,1);discovery.unshift(p)}}deckIndex=0;await renderDeck();await refreshRewindStatus()}
 async function refreshRewindStatus(){const b=$('#undoPass');if(!b||!user)return;try{const {data,error}=await sb.rpc('rewind_status');if(error)throw error;const credits=Number(data?.rewind_credits)||0;b.dataset.rewindCredits=String(credits);b.dataset.freeAvailable=data?.free_available?'1':'0';b.title=data?.free_available?'Your first rewind is free.':credits>0?`${credits} rewind credit${credits===1?'':'s'} available.`:'Your free rewind is used. Additional rewinds require a paid credit or a weekly-gift rewind.';if(!lastPassedId){b.textContent=data?.free_available?'↶ Undo · 1 free':credits>0?`↶ Undo · ${credits} credit${credits===1?'':'s'}`:'↶ Undo · credit';b.disabled=true}else{b.textContent=data?.free_available?'↶ Undo · FREE':credits>0?`↶ Undo · ${credits}`:'↶ Undo · paid/gift';b.disabled=false}}catch(_e){}}
 async function decorate(p){if(p._media)return p;try{p._media=await mediaForProfile(p)}catch(e){p._media={photos:p.avatar_url?[{url:p.avatar_url}]:[],video:null}}return p}
@@ -260,7 +275,7 @@ async function sendMessage(){const input=$('#chatInput'),body=input.value.trim()
 async function unmatchActive(){if(!confirm(`Unmatch ${activeMatch.other.display_name}?`))return;try{const {error}=await sb.rpc('unmatch',{match_uuid:activeMatch.id});if(error)throw error;closeModal('matchModal');await loadMatches()}catch(e){message('#chatMsg',e.message,'bad')}}
 
 async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);$('#myProfile').innerHTML=`<div class="panel"><div class="section-title"><div><span class="pill">YOUR PROFILE</span><h3 style="margin:7px 0 0">What people see</h3></div><button class="btn primary" id="previewMyProfile" type="button">👁 View as others</button></div><div class="photo-grid vera-my-profile-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`;let host=document.getElementById('selfPreviewHost');if(!host){host=document.createElement('section');host.id='selfPreviewHost';host.className='vera-self-preview-host';$('#myProfile').insertAdjacentElement('afterend',host)}$('#previewMyProfile').onclick=previewMyProfileAsOthers}
-$('#editLiveProfile').onclick=async()=>{showScreen('onboardingScreen');await loadOnboarding()};
+$('#editLiveProfile').onclick=openProfileEditor;
 
 async function loadSettings(){const {data,error}=await sb.from('user_settings').select('*').eq('user_id',user.id).single();if(error)throw error;$('#discoveryToggle').checked=data.discovery_enabled!==false}
 $('#saveSettings').onclick=async()=>{const b=$('#saveSettings');setBusy(b,true,'Saving…');try{const {error}=await sb.from('user_settings').update({discovery_enabled:$('#discoveryToggle').checked,updated_at:new Date().toISOString()}).eq('user_id',user.id);if(error)throw error;message('#settingsMsg','Settings saved.','ok')}catch(e){message('#settingsMsg',e.message,'bad')}finally{setBusy(b,false)}};
@@ -290,18 +305,26 @@ $('#topSignOut').onclick=signOut;
 
 sb.auth.onAuthStateChange((event,s)=>{session=s;user=s?.user||null;if(event==='SIGNED_OUT'){showScreen('authScreen')}});
 
+let routeInFlight=null;
 async function routeUserWithRetry(){
-  let lastError=null;
-  for(let attempt=0;attempt<4;attempt++){
-    try{return await routeUser()}
-    catch(e){
-      lastError=e;
-      console.warn('VERAMOR account load retry',attempt+1,e);
-      if(attempt<3)await new Promise(r=>setTimeout(r,[400,900,1800][attempt]));
+  if(routeInFlight)return routeInFlight;
+  routeInFlight=(async()=>{
+    let lastError=null;
+    for(let attempt=0;attempt<4;attempt++){
+      try{return await routeUser()}
+      catch(e){
+        lastError=e;
+        console.warn('VERAMOR account load retry',attempt+1,e);
+        if(attempt<3)await new Promise(r=>setTimeout(r,[400,900,1800][attempt]));
+      }
     }
-  }
-  throw lastError||new Error('Could not load account.');
+    throw lastError||new Error('Could not load account.');
+  })();
+  try{return await routeInFlight}finally{routeInFlight=null}
 }
+window.VERAMOR_ROUTE_USER=routeUserWithRetry;
+window.VERAMOR_OPEN_PROFILE_EDITOR=openProfileEditor;
+window.VERAMOR_REFRESH_MEDIA=refreshMedia;
 
 (async()=>{
   try{
