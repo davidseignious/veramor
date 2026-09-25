@@ -1,0 +1,31 @@
+/* Interaction hardening: keep app tabs tappable above normal sheets/overlays. */
+#bottomNav{
+  z-index:95!important;
+  pointer-events:auto!important;
+  isolation:isolate;
+}
+#bottomNav .inner,
+#bottomNav button,
+#bottomNav button *{
+  pointer-events:auto!important;
+}
+#bottomNav button{
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
+  cursor:pointer;
+}
+.modal.hidden{
+  display:none!important;
+  pointer-events:none!important;
+}
+.appView.hidden{
+  display:none!important;
+  pointer-events:none!important;
+}
+.appView:not(.hidden){
+  pointer-events:auto;
+}
+a[href],button,[role="button"]{
+  touch-action:manipulation;
+}
