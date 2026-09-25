@@ -208,7 +208,24 @@ async function enterApp(){
   results.forEach((result,i)=>{if(result.status==='rejected')console.error('VERAMOR '+tasks[i][0]+' load failed',result.reason)});
   showView('discoverView');
 }
-async function loadDiscovery(priorityId=null){const {data,error}=await sb.rpc('get_discovery_candidates');if(error)throw error;discovery=(data||[]).map(x=>({...x.profile,distance_miles:x.distance_miles}));if(priorityId){const i=discovery.findIndex(x=>x.id===priorityId);if(i>0){const [p]=discovery.splice(i,1);discovery.unshift(p)}}deckIndex=0;await renderDeck();await refreshRewindStatus()}
+async function loadDiscovery(priorityId=null){
+  const {data,error}=await sb.rpc('get_discovery_candidates');
+  if(error)throw error;
+  discovery=(data||[]).map((x,i)=>({...x.profile,distance_miles:x.distance_miles,_discoveryOrder:i}));
+  discovery.sort((a,b)=>{
+    const demoA=a.is_demo_profile===true?1:0;
+    const demoB=b.is_demo_profile===true?1:0;
+    if(demoA!==demoB)return demoA-demoB;
+    return (a._discoveryOrder??0)-(b._discoveryOrder??0);
+  });
+  if(priorityId){
+    const i=discovery.findIndex(x=>x.id===priorityId);
+    if(i>0){const [p]=discovery.splice(i,1);discovery.unshift(p)}
+  }
+  deckIndex=0;
+  await renderDeck();
+  await refreshRewindStatus();
+}
 async function refreshRewindStatus(){const b=$('#undoPass');if(!b||!user)return;try{const {data,error}=await sb.rpc('rewind_status');if(error)throw error;const credits=Number(data?.rewind_credits)||0;b.dataset.rewindCredits=String(credits);b.dataset.freeAvailable=data?.free_available?'1':'0';b.title=data?.free_available?'Your first rewind is free.':credits>0?`${credits} rewind credit${credits===1?'':'s'} available.`:'Your free rewind is used. Additional rewinds require a paid credit or a weekly-gift rewind.';if(!lastPassedId){b.textContent=data?.free_available?'↶ Undo · 1 free':credits>0?`↶ Undo · ${credits} credit${credits===1?'':'s'}`:'↶ Undo · credit';b.disabled=true}else{b.textContent=data?.free_available?'↶ Undo · FREE':credits>0?`↶ Undo · ${credits}`:'↶ Undo · paid/gift';b.disabled=false}}catch(_e){}}
 async function decorate(p){if(p._media)return p;try{p._media=await mediaForProfile(p)}catch(e){p._media={photos:p.avatar_url?[{url:p.avatar_url}]:[],video:null}}return p}
 
