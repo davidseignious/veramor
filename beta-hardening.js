@@ -7,7 +7,7 @@ const TERMS_VERSION='2026-09-11.1';
 const PRIVACY_VERSION='2026-09-11.1';
 const SAFETY_VERSION='2026-09-11.1';
 const BACKGROUND_NOTICE='VERAMOR DOES NOT CONDUCT CRIMINAL BACKGROUND SCREENINGS ON ITS MEMBERS.';
-const hardeningSb=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const hardeningSb=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:false,detectSessionInUrl:true}});
 
 function notice(target,text,type=''){
   const host=typeof target==='string'?document.querySelector(target):target;
