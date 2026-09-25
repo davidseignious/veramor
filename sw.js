@@ -1,4 +1,4 @@
-const CACHE='veramor-shell-v6';
+const CACHE='veramor-shell-v7';
 const CORE=['/','/beta.css','/beta-growth.css','/veramor-icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
