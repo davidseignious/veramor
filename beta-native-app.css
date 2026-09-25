@@ -87,3 +87,31 @@ body.vera-native #profileView>.panel{margin:10px 0}
   body.vera-native .topbar{padding-top:max(env(safe-area-inset-top),4px)}
   body.vera-native .nav{bottom:max(5px,env(safe-area-inset-bottom))}
 }
+
+
+/* Release hardening: keep self-profile photos visible without aggressive cropping. */
+body.vera-native #myProfile .photo,
+body.vera-native .vera-self-preview-card .profile-media,
+body.vera-native .vera-preview-gallery .photo{background:#09080d}
+body.vera-native #myProfile .photo img,
+body.vera-native .vera-self-preview-card .profile-media img,
+body.vera-native .vera-preview-gallery .photo img{object-fit:contain;object-position:center}
+body.vera-native img.vera-image-error{opacity:.22;min-height:120px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+body.vera-native button,
+body.vera-native a.btn{touch-action:manipulation}
+body.vera-native input,
+body.vera-native select,
+body.vera-native textarea{max-width:100%}
+@media(max-width:420px){
+  body.vera-native .shell{padding-left:8px;padding-right:8px}
+  body.vera-native .profile-media{height:calc(100dvh - 230px);min-height:410px}
+  body.vera-native .profile-overlay h2{font-size:28px}
+  body.vera-native .swipe-actions{grid-template-columns:56px 1fr 56px;gap:8px;padding-left:10px;padding-right:10px}
+  body.vera-native .swipe-actions .btn{height:54px}
+  body.vera-native .nav{width:calc(100% - 12px)}
+}
+@media(max-width:360px){
+  body.vera-native .profile-media{min-height:360px}
+  body.vera-native #authScreen .hero h1{font-size:31px}
+  body.vera-native .panel{padding:14px}
+}
