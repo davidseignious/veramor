@@ -38,7 +38,7 @@
     profile.qualityGate={approved:reasons.length===0,reasons:reasons,validPromptCount:ps.length,photoCount:pics.length,uniquePhotoCount:unique.size,minShortSide:MIN_SHORT_SIDE};
     return profile.qualityGate;
   }
-  function isEligible(profile){return validate(profile).approved}
+  function isEligible(profile){if(!profile||!profile.demo)return true;return validate(profile).approved}
   const baseFiltered=typeof filtered==='function'?filtered:null;
   if(baseFiltered)filtered=function(){return baseFiltered().filter(isEligible)};
   function counts(){const total=demos.length,approved=demos.filter(isEligible).length;return{total:total,approved:approved,blocked:total-approved}}
@@ -47,7 +47,7 @@
     const html='<b>PROFILE QUALITY GATE ON</b><span>'+c.approved+' of '+c.total+' demo profiles pass · '+c.blocked+' blocked until they have 4 same-person 1080 photos and 3 completed prompts.</span>';
     if(b){b.innerHTML=html;return}b=document.createElement('div');b.id='profileQualityGateBanner';b.className='profile-quality-gate-banner';b.innerHTML=html;const controls=host.querySelector('.approved-controls-row');if(controls)controls.insertAdjacentElement('beforebegin',b);else host.prepend(b)
   }
-  function addQualityChip(){const p=deck&&deck[idx];if(!p||!isEligible(p))return;const row=document.querySelector('#deck .profile-top-badges');if(row&&!row.querySelector('.quality-1080-chip')){const chip=document.createElement('span');chip.className='media-chip quality-1080-chip';chip.textContent='1080 QUALITY · 3+ PROMPTS';row.appendChild(chip)}}
+  function addQualityChip(){const p=deck&&deck[idx];if(!p||!p.demo||!isEligible(p))return;const row=document.querySelector('#deck .profile-top-badges');if(row&&!row.querySelector('.quality-1080-chip')){const chip=document.createElement('span');chip.className='media-chip quality-1080-chip';chip.textContent='1080 QUALITY · 3+ PROMPTS';row.appendChild(chip)}}
   const style=document.createElement('style');style.textContent='.profile-quality-gate-banner{margin:0 0 16px;padding:13px 16px;border:1px solid rgba(247,154,185,.28);border-radius:14px;background:rgba(247,154,185,.07);display:flex;gap:12px;align-items:center;flex-wrap:wrap}.profile-quality-gate-banner b{font-size:11px;letter-spacing:.12em;color:#f79ab9}.profile-quality-gate-banner span{font-size:13px;color:rgba(255,255,255,.72)}.premium-profile-media img,.group-person-photo img{image-rendering:auto;object-fit:cover}';document.head.appendChild(style);
   window.VERAMOR_PROFILE_QUALITY_RULES={minPrompts:MIN_PROMPTS,minPhotos:MIN_PHOTOS,minShortSide:MIN_SHORT_SIDE,validate:validate,isEligible:isEligible,counts:counts};
   const deckEl=document.getElementById('deck');if(deckEl)new MutationObserver(function(){setTimeout(function(){addQualityBanner();addQualityChip()},0)}).observe(deckEl,{childList:true,subtree:true});
