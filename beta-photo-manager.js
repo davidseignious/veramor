@@ -136,7 +136,7 @@ function renderPhotoManager(){
     ${reviewCopy()}
     <div class="vera-photo-manager-grid">
       ${pmPhotos.map((p,i)=>`
-        <article class="vera-photo-slot ${i===0?'is-main':''}" data-photo-path="${pmEsc(p.path)}">
+        <article class="vera-photo-slot ${i===0?'is-main':''}" data-photo-path="${pmEsc(p.path)}" data-photo-index="${i}">
           <div class="vera-photo-slot-image">
             <img src="${pmEsc(p.url)}" alt="Profile photo ${i+1}">
             <span class="vera-photo-number">PHOTO ${i+1}</span>
@@ -166,6 +166,33 @@ function renderPhotoManager(){
   root.querySelectorAll('[data-move-later]').forEach(b=>b.onclick=()=>movePhoto(Number(b.dataset.moveLater),Number(b.dataset.moveLater)+1));
   root.querySelectorAll('[data-replace]').forEach(b=>b.onclick=()=>beginReplace(b.dataset.replace));
   root.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePhotoEasy(b.dataset.remove));
+
+  let dragFrom=null,startX=0,startY=0;
+  const clearDrag=()=>{root.querySelectorAll('.vera-photo-slot.dragging,.vera-photo-slot.drag-over').forEach(x=>x.classList.remove('dragging','drag-over'));dragFrom=null};
+  root.querySelectorAll('.vera-photo-slot-image').forEach((handle,i)=>{
+    handle.setAttribute('title','Drag to reorder');
+    handle.addEventListener('pointerdown',e=>{
+      if(e.button!==undefined&&e.button!==0)return;
+      dragFrom=i;startX=e.clientX;startY=e.clientY;
+      handle.closest('.vera-photo-slot')?.classList.add('dragging');
+    });
+    handle.addEventListener('pointermove',e=>{
+      if(dragFrom===null)return;
+      if(Math.hypot(e.clientX-startX,e.clientY-startY)<18)return;
+      root.querySelectorAll('.vera-photo-slot.drag-over').forEach(x=>x.classList.remove('drag-over'));
+      document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.vera-photo-slot')?.classList.add('drag-over');
+    });
+    handle.addEventListener('pointerup',e=>{
+      if(dragFrom===null)return;
+      const moved=Math.hypot(e.clientX-startX,e.clientY-startY)>=18;
+      const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.vera-photo-slot');
+      const to=target?Number(target.dataset.photoIndex):dragFrom;
+      const from=dragFrom;clearDrag();
+      if(moved&&Number.isInteger(to)&&to!==from)movePhoto(from,to);
+    });
+    handle.addEventListener('pointercancel',clearDrag);
+  });
+
   document.getElementById('veraAddPhotos').onclick=()=>document.getElementById('veraPhotoAddInput').click();
   document.getElementById('veraPhotoAddInput').onchange=e=>addPhotosEasy(Array.from(e.target.files||[]));
   document.getElementById('veraPhotoReplaceInput').onchange=e=>replacePhotoEasy(e.target.files?.[0]||null);
