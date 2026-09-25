@@ -79,6 +79,14 @@
         <div class="field"><label>Do you have children?</label><select id="hasChildren" required><option value="">Choose</option><option>Yes</option><option>No</option><option>Prefer not to say</option></select></div>
         <div class="field"><label>Do you want children?</label><select id="wantsChildren" required><option value="">Choose</option><option>Yes</option><option>No</option><option>Open to it</option><option>Not sure</option><option>Prefer not to say</option></select></div>
       </div>
+      <h3>More about you <span class="muted">(optional)</span></h3>
+      <p class="muted">These details help people understand your lifestyle before matching.</p>
+      <div class="grid">
+        <div class="field"><label>Religion</label><input id="religion" maxlength="80" placeholder="Christian, Muslim, Spiritual…"></div>
+        <div class="field"><label>Education</label><input id="education" maxlength="120" placeholder="School, degree, or education level"></div>
+        <div class="field"><label>Pets</label><input id="pets" maxlength="80" placeholder="Dog, cat, none, love animals…"></div>
+        <div class="field"><label>Languages <span class="muted">(comma separated)</span></label><input id="languages" maxlength="160" placeholder="English, Amharic, Spanish"></div>
+      </div>
       <button id="saveProfile" class="btn primary full">Save profile details</button><div id="profileMsg"></div>
     </div>
 
@@ -131,7 +139,7 @@
 <div id="matchModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong id="matchModalTitle">Match</strong><button class="x" type="button" data-close="matchModal" aria-label="Close match">×</button></div><div id="matchModalBody"></div></div></div>
 <div id="safetyModal" class="modal hidden"><div class="sheet"><div class="sheet-head"><strong>Safety</strong><button class="x" type="button" data-close="safetyModal" aria-label="Close safety">×</button></div><div id="safetyModalBody"></div></div></div>
 
-<script type="module" src="beta.js?v=20260924-exercise5"></script>
+<script type="module" src="beta.js?v=20260924-profileupgrade6"></script>
 <script type="module" src="beta-discovery-filters.js?v=20260924-loginfix1"></script>
 <script type="module" src="beta-likes-you.js?v=20260924-authstorm2"></script>
 <script type="module" src="beta-push.js?v=20260924-authstorm2"></script>
