@@ -134,19 +134,33 @@ async function previewMyProfileAsOthers(){
   await fetchMe();
   const p=await decorate({...profile,is_demo_profile:false,distance_miles:null});
   const m=p._media||{photos:[],video:null};
+
+  let host=document.getElementById('selfPreviewHost');
+  if(!host){
+    host=document.createElement('section');
+    host.id='selfPreviewHost';
+    host.className='vera-self-preview-host';
+    const profileView=document.getElementById('profileView');
+    const anchor=document.getElementById('myProfile');
+    if(anchor)anchor.insertAdjacentElement('afterend',host);
+    else profileView?.prepend(host);
+  }
+
+  const main=m.photos[0]?.url||'';
   const media=m.video
-    ? `<video src="${esc(m.video)}" poster="${esc(m.photos[0]?.url||'')}" controls playsinline preload="metadata"></video>`
-    : `<img src="${esc(m.photos[0]?.url||'')}" alt="${esc(p.display_name)}">`;
-  $('#profileModalBody').dataset.profileId=p.id;
-  $('#profileModalBody').classList.add('real-user-profile');
-  $('#profileModalBody').classList.remove('demo-user-profile');
-  $('#profileModalBody').innerHTML=`
-    <div class="notice ok"><strong>PROFILE PREVIEW</strong><br>This is how your profile appears to another verified person in Discovery.</div>
+    ? `<video src="${esc(m.video)}" poster="${esc(main)}" controls playsinline preload="metadata"></video>`
+    : `<img src="${esc(main)}" alt="${esc(p.display_name)}">`;
+
+  host.innerHTML=`
+    <div class="section-title vera-self-preview-head">
+      <div><span class="pill ok">VIEW AS OTHERS</span><h3 style="margin:7px 0 0">Your Discovery profile</h3></div>
+      <button class="btn" id="closeSelfPreview" type="button">Close preview</button>
+    </div>
     <article class="card profile-card vera-self-preview-card">
       <div class="profile-media real-user-media">
         ${media}
         <span class="pill ok profile-badge">VERIFIED BETA</span>
-        ${formatAge(p)?`<span class="age-badge">AGE ${formatAge(p)}</span>`:''}
+        ${formatAge(p)?`<span class="age-badge" aria-label="Age ${formatAge(p)}">AGE ${formatAge(p)}</span>`:''}
         <div class="profile-overlay">
           <h2>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}</h2>
           <div>${esc(p.occupation||'')}${p.city?` · ${esc(p.city)}`:''}</div>
@@ -163,9 +177,20 @@ async function previewMyProfileAsOthers(){
         <button class="btn primary" type="button" disabled>Connect</button>
         <button class="btn" type="button" disabled>Signal</button>
       </div>
-    </article>`;
-  showModal('profileModal');
-  $('#previewFullProfileBtn').onclick=()=>openFullProfile(p);
+    </article>
+    <div class="panel vera-preview-gallery">
+      <div class="section-title"><strong>Photo order others see</strong><span class="pill">${m.photos.length} photo${m.photos.length===1?'':'s'}</span></div>
+      <div class="photo-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div>
+    </div>`;
+
+  host.classList.add('on');
+  host.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('closeSelfPreview').onclick=()=>{
+    host.classList.remove('on');
+    host.innerHTML='';
+    document.getElementById('profileView')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  document.getElementById('previewFullProfileBtn').onclick=()=>openFullProfile(p);
 }
 window.VERAMOR_PREVIEW_MY_PROFILE=previewMyProfileAsOthers;
 
@@ -186,7 +211,7 @@ async function loadMessages(scroll=true){if(!activeMatch)return;const {data,erro
 async function sendMessage(){const input=$('#chatInput'),body=input.value.trim();if(!body)return;const b=$('#sendMessage');setBusy(b,true,'…');try{const {error}=await sb.from('messages').insert({match_id:activeMatch.id,sender_id:user.id,body});if(error)throw error;input.value='';await loadMessages(true)}catch(e){message('#chatMsg',e.message,'bad')}finally{setBusy(b,false)}}
 async function unmatchActive(){if(!confirm(`Unmatch ${activeMatch.other.display_name}?`))return;try{const {error}=await sb.rpc('unmatch',{match_uuid:activeMatch.id});if(error)throw error;closeModal('matchModal');await loadMatches()}catch(e){message('#chatMsg',e.message,'bad')}}
 
-async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);$('#myProfile').innerHTML=`<div class="panel"><div class="section-title"><div><span class="pill">YOUR PROFILE</span><h3 style="margin:7px 0 0">What people see</h3></div><button class="btn primary" id="previewMyProfile" type="button">Preview profile</button></div><div class="photo-grid vera-my-profile-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`;$('#previewMyProfile').onclick=previewMyProfileAsOthers}
+async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);$('#myProfile').innerHTML=`<div class="panel"><div class="section-title"><div><span class="pill">YOUR PROFILE</span><h3 style="margin:7px 0 0">What people see</h3></div><button class="btn primary" id="previewMyProfile" type="button">👁 View as others</button></div><div class="photo-grid vera-my-profile-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`;let host=document.getElementById('selfPreviewHost');if(!host){host=document.createElement('section');host.id='selfPreviewHost';host.className='vera-self-preview-host';$('#myProfile').insertAdjacentElement('afterend',host)}$('#previewMyProfile').onclick=previewMyProfileAsOthers}
 $('#editLiveProfile').onclick=async()=>{showScreen('onboardingScreen');await loadOnboarding()};
 
 async function loadSettings(){const {data,error}=await sb.from('user_settings').select('*').eq('user_id',user.id).single();if(error)throw error;$('#discoveryToggle').checked=data.discovery_enabled!==false}
