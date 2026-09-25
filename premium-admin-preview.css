@@ -38,3 +38,15 @@ body.approved-preview-open #preview{display:block!important;min-height:100vh!imp
   object-fit:cover;
   object-position:center top;
 }
+
+.group-person.real-user-media .group-person-photo{
+  background:#0b0910;
+}
+.group-person.real-user-media .group-person-photo img{
+  object-fit:contain;
+  object-position:center center;
+  background:#0b0910;
+}
+.group-person.demo-user-media .group-person-photo img{
+  object-fit:cover;
+}
