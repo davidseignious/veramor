@@ -33,7 +33,7 @@ async function loadCatalog(){
 }
 
 async function startCheckout(productKey,button){
-  if(!billingConfigured){showBillingMessage('VERAMOR payments are not connected yet. Serviq is intentionally blocked from this app.','warn');return}
+  if(!billingConfigured){showBillingMessage('Payments are coming soon. VERAMOR billing is intentionally separate from Serviq.','warn');return}
   const u=await currentUser();if(!u){showBillingMessage('Sign in before purchasing.','warn');return}
   button.disabled=true;const prior=button.textContent;button.textContent='Opening secure checkout…';
   try{
@@ -63,7 +63,7 @@ async function installBilling(){
   panel.id='veramorBilling';panel.className='panel vera-billing-panel';
   panel.innerHTML=`
     <div class="section-title"><div><span class="pill">VERAMOR BILLING</span><h3 style="margin:7px 0 0">Plans & rewind credits</h3></div><span class="pill ${billingConfigured?'ok':'warn'}">${billingConfigured?'CONNECTED':'NOT CONNECTED'}</span></div>
-    <div class="notice ${billingConfigured?'ok':'warn'}">${bEsc(status.message||'')}</div>
+    <div class="notice ${billingConfigured?'ok':'warn'}">${billingConfigured?'Secure VERAMOR payments are connected.':'Payments are coming soon. VERAMOR billing is kept completely separate from Serviq, so purchases stay disabled until the dedicated VERAMOR Stripe account is connected.'}</div>
     <p class="muted">Current plan: <strong>${bEsc(String(plan||'free').toUpperCase())}</strong>. Your first rewind is free once; after that, rewinds use a purchased or weekly-gift credit.</p>
     <div class="vera-billing-grid">
       ${planRows.map(x=>`<article class="vera-billing-card"><span class="pill">${x.plan_code==='premium'?'PREMIUM':'PLUS'}</span><h4>${bEsc(x.display_name)}</h4><strong class="vera-price">${money(x.amount_cents)}${x.recurring_interval?'/'+bEsc(x.recurring_interval):''}</strong><button class="btn primary full" data-buy="${bEsc(x.product_key)}" ${billingConfigured?'':'disabled'}>Choose plan</button></article>`).join('')}
