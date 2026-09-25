@@ -18,8 +18,22 @@ function ext(file){const n=(file.name||'').split('.').pop()?.toLowerCase();if(n&
 function ageFrom(date){if(!date)return 0;const d=new Date(date+'T00:00:00');const now=new Date();let a=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))a--;return a}
 function formatAge(p){const d=p.birthdate||p.birth_date;const a=ageFrom(d);return a>=18?a:''}
 function heightLabel(n){return n?`${Math.floor(n/12)}′${n%12}″`:''}
-const lifestyleFacts=p=>[['Height',heightLabel(p.height_inches)],['Cigarettes',p.smoking],['Weed',p.cannabis_use],['Alcohol',p.drinking],['Has kids',p.has_children],['Wants kids',p.wants_children]].filter(([,v])=>v);
-function lifestyleHtml(p){const facts=lifestyleFacts(p);return facts.length?`<div class="lifestyle-facts">${facts.map(([label,value])=>`<div><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div>`:''}
+const lifestyleFacts=p=>[
+  ['↕','Height',heightLabel(p.height_inches)],
+  ['🚭','Cigarettes',p.smoking],
+  ['🌿','Weed',p.cannabis_use],
+  ['🥂','Drinking',p.drinking],
+  ['👶','Has kids',p.has_children],
+  ['❤️','Wants kids',p.wants_children]
+].filter(([, ,v])=>v);
+function lifestyleHtml(p){
+  const facts=lifestyleFacts(p);
+  if(!facts.length)return '';
+  return `<section class="vera-profile-details">
+    <div class="vera-profile-details-head"><div><small>PROFILE DETAILS</small><strong>At a glance</strong></div></div>
+    <div class="lifestyle-facts">${facts.map(([icon,label,value])=>`<div class="vera-detail-fact"><span class="vera-detail-icon">${icon}</span><span><small>${esc(label)}</small><strong>${esc(value)}</strong></span></div>`).join('')}</div>
+  </section>`;
+}
 $('#heightInches').insertAdjacentHTML('beforeend',Array.from({length:61},(_,i)=>{const n=i+36;return `<option value="${n}">${heightLabel(n)}</option>`}).join(''));
 
 async function signed(bucket,path,ttl=900){if(!path)return null;if(/^https?:\/\//i.test(path))return path;const {data,error}=await sb.storage.from(bucket).createSignedUrl(path,ttl);return error?null:data?.signedUrl||null}
