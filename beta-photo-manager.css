@@ -5,3 +5,8 @@
 .vera-self-preview-head{padding:0 2px}
 .vera-self-preview-card{margin:0 0 12px}
 .vera-preview-gallery{margin-top:12px}
+
+.vera-photo-slot-image{touch-action:pan-y;cursor:grab}
+.vera-photo-slot.dragging{opacity:.64;transform:scale(.985)}
+.vera-photo-slot.drag-over{outline:2px solid rgba(255,116,150,.72);outline-offset:2px}
+.vera-photo-slot{transition:transform .15s ease,opacity .15s ease,outline-color .15s ease}
