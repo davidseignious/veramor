@@ -22,6 +22,7 @@ const lifestyleFacts=p=>[
   ['↕','Height',heightLabel(p.height_inches)],
   ['🚭','Cigarettes',p.smoking],
   ['🌿','Weed',p.cannabis_use],
+  ['🏃','Exercise',p.exercise||'Not added'],
   ['🥂','Drinking',p.drinking],
   ['👶','Has kids',p.has_children],
   ['❤️','Wants kids',p.wants_children]
@@ -91,7 +92,7 @@ $('#authForm').onsubmit=async e=>{e.preventDefault();const btn=$('#authSubmit');
 async function loadOnboarding(){
   await fetchMe();
   $('#displayName').value=profile.display_name||'';$('#birthdate').value=profile.birthdate||profile.birth_date||'';$('#gender').value=profile.gender||'';$('#city').value=profile.city||'';$('#occupation').value=profile.occupation||'';$('#intent').value=profile.relationship_intent||'';$('#bio').value=profile.bio||'';$('#interests').value=(profile.interests||[]).join(', ');$('#bioCount').textContent=`${($('#bio').value||'').length}/500`;
-  $('#heightInches').value=profile.height_inches||'';$('#smoking').value=profile.smoking||'';$('#cannabisUse').value=profile.cannabis_use||'';$('#drinking').value=profile.drinking||'';$('#hasChildren').value=profile.has_children||'';$('#wantsChildren').value=profile.wants_children||'';
+  $('#heightInches').value=profile.height_inches||'';$('#smoking').value=profile.smoking||'';$('#cannabisUse').value=profile.cannabis_use||'';$('#exercise').value=profile.exercise||'';$('#drinking').value=profile.drinking||'';$('#hasChildren').value=profile.has_children||'';$('#wantsChildren').value=profile.wants_children||'';
   const {data:settings}=await sb.from('user_settings').select('*').eq('user_id',user.id).single();const interested=settings?.interested_in||[];$('#interestedIn').value=interested.length===1?(interested[0]==='Woman'?'Women':interested[0]==='Man'?'Men':interested[0]):'Everyone';
   await refreshMedia();renderLaunchChecklist();
 }
@@ -100,7 +101,7 @@ $('#bio').oninput=()=>$('#bioCount').textContent=`${$('#bio').value.length}/500`
 async function saveProfileDetails(show=true){
   const birth=$('#birthdate').value;if(ageFrom(birth)<18)throw new Error('VERAMOR is 18+ only.');
   const interests=$('#interests').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12);
-  const row={display_name:$('#displayName').value.trim(),birthdate:birth,birth_date:birth,gender:$('#gender').value,city:$('#city').value.trim(),occupation:$('#occupation').value.trim(),relationship_intent:$('#intent').value,bio:$('#bio').value.trim(),interests,height_inches:Number($('#heightInches').value)||null,smoking:$('#smoking').value||null,cannabis_use:$('#cannabisUse').value||null,drinking:$('#drinking').value||null,has_children:$('#hasChildren').value||null,wants_children:$('#wantsChildren').value||null};
+  const row={display_name:$('#displayName').value.trim(),birthdate:birth,birth_date:birth,gender:$('#gender').value,city:$('#city').value.trim(),occupation:$('#occupation').value.trim(),relationship_intent:$('#intent').value,bio:$('#bio').value.trim(),interests,height_inches:Number($('#heightInches').value)||null,smoking:$('#smoking').value||null,cannabis_use:$('#cannabisUse').value||null,exercise:$('#exercise').value||null,drinking:$('#drinking').value||null,has_children:$('#hasChildren').value||null,wants_children:$('#wantsChildren').value||null};
   const {error}=await sb.from('profiles').update(row).eq('id',user.id);if(error)throw error;
   const meet=$('#interestedIn').value;const interested_in=meet==='Women'?['Woman']:meet==='Men'?['Man']:['Everyone'];
   const {error:se}=await sb.from('user_settings').update({interested_in,updated_at:new Date().toISOString()}).eq('user_id',user.id);if(se)throw se;
