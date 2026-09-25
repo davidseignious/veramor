@@ -30,23 +30,40 @@ async function signed(path){
   return data?.signedUrl||'';
 }
 
+function sortBySavedOrder(rows,profile){
+  const order=Array.isArray(profile?.photo_order)?profile.photo_order:[];
+  const rank=new Map(order.map((path,i)=>[path,i]));
+  return [...rows].sort((a,b)=>{
+    const ar=rank.has(a.path)?rank.get(a.path):9999;
+    const br=rank.has(b.path)?rank.get(b.path):9999;
+    if(ar!==br)return ar-br;
+    return (a.created_at||'').localeCompare(b.created_at||'');
+  });
+}
+
 async function loadPhotoManager(){
   const u=await pmUser();
   if(!u)return;
   const [{data:list,error:le},{data:profile,error:pe}]=await Promise.all([
     pmSb.storage.from('profile-media').list(u.id,{limit:20,sortBy:{column:'created_at',order:'asc'}}),
-    pmSb.from('profiles').select('avatar_path,verification_status,liveness_verified,ai_media_verified,is_visible').eq('id',u.id).single()
+    pmSb.from('profiles').select('avatar_path,photo_order,verification_status,liveness_verified,ai_media_verified,is_visible').eq('id',u.id).single()
   ]);
-  if(le)throw le;if(pe)throw pe;
+  if(le)throw le;
+  if(pe)throw pe;
   pmProfile=profile||{};
-  const files=(list||[]).filter(x=>x?.id&&x?.name);
+  const rows=(list||[]).filter(x=>x?.id&&x?.name).map(f=>({
+    path:`${u.id}/${f.name}`,
+    name:f.name,
+    created_at:f.created_at||''
+  }));
   pmPhotos=[];
-  for(const f of files){
-    const path=`${u.id}/${f.name}`;
-    pmPhotos.push({path,name:f.name,url:await signed(path)});
+  for(const row of rows){
+    const url=await signed(row.path);
+    if(url)pmPhotos.push({...row,url});
   }
-  if(pmProfile.avatar_path){
-    pmPhotos.sort((a,b)=>Number(b.path===pmProfile.avatar_path)-Number(a.path===pmProfile.avatar_path));
+  pmPhotos=sortBySavedOrder(pmPhotos,pmProfile);
+  if(pmPhotos.length&&!Array.isArray(pmProfile.photo_order)){
+    pmProfile.photo_order=pmPhotos.map(x=>x.path);
   }
   renderPhotoManager();
 }
@@ -66,9 +83,32 @@ function managerHost(){
 
 function reviewCopy(){
   if(pmProfile?.verification_status==='verified'&&pmProfile?.liveness_verified&&pmProfile?.ai_media_verified===false){
-    return '<div class="notice warn"><strong>Photo review pending</strong><br>Your face verification is still saved. Only the new/changed profile media needs review before discovery turns back on.</div>';
+    return '<div class="notice warn"><strong>Photo review pending</strong><br>Your identity verification is still saved. Only the changed photo needs media review before Discovery turns back on.</div>';
   }
-  return '<div class="notice"><strong>Easy photo editing</strong><br>Keep at least 4 photos. Adding or replacing a photo sends only that media back for review — you do not need to redo your face verification.</div>';
+  return '<div class="notice"><strong>Arrange your Discovery profile</strong><br>Photo 1 is your main Discovery image. Move photos earlier or later, replace one, or remove extras.</div>';
+}
+
+async function savePhotoOrder(nextPhotos=pmPhotos,success='Photo order saved.'){
+  const u=await pmUser();if(!u)return;
+  const order=nextPhotos.map(x=>x.path);
+  const main=order[0]||null;
+  const {error}=await pmSb.from('profiles')
+    .update({photo_order:order,avatar_path:main,avatar_url:null,updated_at:new Date().toISOString()})
+    .eq('id',u.id);
+  if(error)throw error;
+  pmProfile={...(pmProfile||{}),photo_order:order,avatar_path:main};
+  pmMessage(success,'ok');
+  window.dispatchEvent(new CustomEvent('veramor:photos-changed'));
+}
+
+async function movePhoto(from,to){
+  if(to<0||to>=pmPhotos.length||from===to)return;
+  const next=[...pmPhotos];
+  const [item]=next.splice(from,1);
+  next.splice(to,0,item);
+  pmPhotos=next;
+  renderPhotoManager();
+  try{await savePhotoOrder(pmPhotos,'Photo order updated.')}catch(e){pmMessage(e.message||'Could not save photo order.','bad');await loadPhotoManager().catch(()=>{})}
 }
 
 function renderPhotoManager(){
@@ -76,34 +116,41 @@ function renderPhotoManager(){
   const count=pmPhotos.length;
   root.innerHTML=`
     <div class="section-title">
-      <div><span class="pill">PROFILE PHOTOS</span><h3 style="margin:7px 0 0">Manage photos</h3></div>
+      <div><span class="pill">PROFILE PHOTOS</span><h3 style="margin:7px 0 0">Arrange your photos</h3></div>
       <span class="pill ${count>=4?'ok':'warn'}">${count}/6</span>
     </div>
+    <button class="btn primary full vera-preview-profile-btn" id="veraPreviewProfile" type="button">👁 Preview profile as others see it</button>
     ${reviewCopy()}
     <div class="vera-photo-manager-grid">
       ${pmPhotos.map((p,i)=>`
-        <article class="vera-photo-slot" data-photo-path="${pmEsc(p.path)}">
+        <article class="vera-photo-slot ${i===0?'is-main':''}" data-photo-path="${pmEsc(p.path)}">
           <div class="vera-photo-slot-image">
             <img src="${pmEsc(p.url)}" alt="Profile photo ${i+1}">
-            <span class="vera-photo-number">${i+1}</span>
-            ${p.path===pmProfile?.avatar_path?'<span class="vera-photo-main">MAIN</span>':''}
+            <span class="vera-photo-number">PHOTO ${i+1}</span>
+            ${i===0?'<span class="vera-photo-main">MAIN</span>':''}
+          </div>
+          <div class="vera-order-controls">
+            <button class="btn" type="button" data-move-earlier="${i}" ${i===0?'disabled':''}>← Earlier</button>
+            <button class="btn" type="button" data-move-later="${i}" ${i===count-1?'disabled':''}>Later →</button>
           </div>
           <div class="vera-photo-actions">
-            <button class="btn" type="button" data-set-main="${pmEsc(p.path)}" ${p.path===pmProfile?.avatar_path?'disabled':''}>Set main</button>
-            <button class="btn" type="button" data-replace="${pmEsc(p.path)}">Replace</button>
-            <button class="btn danger" type="button" data-remove="${pmEsc(p.path)}" ${count<=4?'disabled title="Keep at least 4 photos"':''}>Remove</button>
+            <button class="btn" type="button" data-replace="${pmEsc(p.path)}">Swap photo</button>
+            <button class="btn danger" type="button" data-remove="${pmEsc(p.path)}" ${count<=4?'disabled title="Keep at least 4 photos"':''}>Delete</button>
           </div>
         </article>`).join('')}
     </div>
+    ${count?'' : '<div class="notice warn">No profile photos are showing yet. Reload this screen once; if you are signed in, VERAMOR will pull them from your private profile-media folder.</div>'}
     <div class="vera-photo-add">
       <input id="veraPhotoAddInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
       <input id="veraPhotoReplaceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
       <button class="btn primary full" id="veraAddPhotos" type="button" ${count>=6?'disabled':''}>＋ Add photo${count<5?'s':''}</button>
-      <p class="muted">Minimum 4 · Maximum 6 · JPG, PNG or WebP · 10 MB max each</p>
+      <p class="muted">Minimum 4 · Maximum 6 · Photo 1 is shown first in Discovery.</p>
     </div>
     <div id="veraPhotoManagerMsg"></div>`;
 
-  root.querySelectorAll('[data-set-main]').forEach(b=>b.onclick=()=>setMainPhoto(b.dataset.setMain));
+  document.getElementById('veraPreviewProfile').onclick=()=>window.VERAMOR_PREVIEW_MY_PROFILE?.();
+  root.querySelectorAll('[data-move-earlier]').forEach(b=>b.onclick=()=>movePhoto(Number(b.dataset.moveEarlier),Number(b.dataset.moveEarlier)-1));
+  root.querySelectorAll('[data-move-later]').forEach(b=>b.onclick=()=>movePhoto(Number(b.dataset.moveLater),Number(b.dataset.moveLater)+1));
   root.querySelectorAll('[data-replace]').forEach(b=>b.onclick=()=>beginReplace(b.dataset.replace));
   root.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePhotoEasy(b.dataset.remove));
   document.getElementById('veraAddPhotos').onclick=()=>document.getElementById('veraPhotoAddInput').click();
@@ -130,17 +177,6 @@ async function uploadOne(file,u){
   return path;
 }
 
-async function setMainPhoto(path){
-  try{
-    const u=await pmUser();if(!u)return;
-    const {error}=await pmSb.from('profiles').update({avatar_path:path,avatar_url:null,updated_at:new Date().toISOString()}).eq('id',u.id);
-    if(error)throw error;
-    pmMessage('Main photo updated.','ok');
-    await loadPhotoManager();
-    window.dispatchEvent(new CustomEvent('veramor:photos-changed'));
-  }catch(e){pmMessage(e.message||'Could not set the main photo.','bad')}
-}
-
 function beginReplace(path){
   replaceTarget=path;
   const input=document.getElementById('veraPhotoReplaceInput');
@@ -151,41 +187,51 @@ function beginReplace(path){
 async function replacePhotoEasy(file){
   if(!file||!replaceTarget)return;
   const oldPath=replaceTarget;replaceTarget=null;
-  pmMessage('Replacing photo…');
+  pmMessage('Swapping photo…');
   try{
     const u=await pmUser();if(!u)return;
     validate(file);
+    const oldIndex=Math.max(0,pmPhotos.findIndex(x=>x.path===oldPath));
     const newPath=await uploadOne(file,u);
-    if(pmProfile?.avatar_path===oldPath){
-      const {error:ae}=await pmSb.from('profiles').update({avatar_path:newPath,avatar_url:null,updated_at:new Date().toISOString()}).eq('id',u.id);
-      if(ae)throw ae;
-    }
     const {error:de}=await pmSb.storage.from('profile-media').remove([oldPath]);
     if(de)throw de;
-    pmMessage('Photo replaced. Your face verification is still saved; the new photo is now in media review.','ok');
+    const order=pmPhotos.map(x=>x.path);
+    order.splice(oldIndex,1,newPath);
+    const {error:ue}=await pmSb.from('profiles').update({
+      photo_order:order,
+      avatar_path:order[0]||null,
+      avatar_url:null,
+      updated_at:new Date().toISOString()
+    }).eq('id',u.id);
+    if(ue)throw ue;
+    pmMessage('Photo swapped. Your identity verification stays saved; only the new media needs review.','ok');
     await loadPhotoManager();
     window.dispatchEvent(new CustomEvent('veramor:photos-changed'));
-  }catch(e){pmMessage(e.message||'Could not replace that photo.','bad')}
+  }catch(e){pmMessage(e.message||'Could not swap that photo.','bad')}
 }
 
 async function removePhotoEasy(path){
-  if(pmPhotos.length<=4)return pmMessage('VERAMOR requires at least 4 photos. Replace this photo instead of removing it.','warn');
-  if(!confirm('Remove this profile photo?'))return;
-  pmMessage('Removing photo…');
+  if(pmPhotos.length<=4)return pmMessage('VERAMOR requires at least 4 photos. Swap this photo instead of deleting it.','warn');
+  if(!confirm('Delete this profile photo?'))return;
+  pmMessage('Deleting photo…');
   try{
     const u=await pmUser();if(!u)return;
-    const remaining=pmPhotos.filter(x=>x.path!==path);
+    const next=pmPhotos.filter(x=>x.path!==path);
     const {error}=await pmSb.storage.from('profile-media').remove([path]);
     if(error)throw error;
-    if(pmProfile?.avatar_path===path){
-      const next=remaining[0]?.path||null;
-      const {error:ae}=await pmSb.from('profiles').update({avatar_path:next,avatar_url:null,updated_at:new Date().toISOString()}).eq('id',u.id);
-      if(ae)throw ae;
-    }
-    pmMessage('Photo removed.','ok');
+    const order=next.map(x=>x.path);
+    const {error:ue}=await pmSb.from('profiles').update({
+      photo_order:order,
+      avatar_path:order[0]||null,
+      avatar_url:null,
+      updated_at:new Date().toISOString()
+    }).eq('id',u.id);
+    if(ue)throw ue;
+    pmPhotos=next;
+    pmMessage('Photo deleted.','ok');
     await loadPhotoManager();
     window.dispatchEvent(new CustomEvent('veramor:photos-changed'));
-  }catch(e){pmMessage(e.message||'Could not remove that photo.','bad')}
+  }catch(e){pmMessage(e.message||'Could not delete that photo.','bad')}
 }
 
 async function addPhotosEasy(files){
@@ -196,8 +242,17 @@ async function addPhotosEasy(files){
   pmMessage('Uploading photo'+(files.length>1?'s':'')+'…');
   try{
     const u=await pmUser();if(!u)return;
-    for(const f of files)await uploadOne(f,u);
-    pmMessage('Photo'+(files.length>1?'s':'')+' added. Your face verification is still saved; new media is sent for photo review.','ok');
+    const newPaths=[];
+    for(const f of files)newPaths.push(await uploadOne(f,u));
+    const order=[...pmPhotos.map(x=>x.path),...newPaths];
+    const {error:ue}=await pmSb.from('profiles').update({
+      photo_order:order,
+      avatar_path:order[0]||null,
+      avatar_url:null,
+      updated_at:new Date().toISOString()
+    }).eq('id',u.id);
+    if(ue)throw ue;
+    pmMessage('Photo'+(files.length>1?'s':'')+' added. Your identity verification stays saved; new media is sent for photo review.','ok');
     document.getElementById('veraPhotoAddInput').value='';
     await loadPhotoManager();
     window.dispatchEvent(new CustomEvent('veramor:photos-changed'));
@@ -205,9 +260,13 @@ async function addPhotosEasy(files){
 }
 
 function bootPhotoManager(){
-  if(document.getElementById('profileView'))loadPhotoManager().catch(()=>{});
-  document.querySelector('#bottomNav button[data-view="profileView"]')?.addEventListener('click',()=>setTimeout(()=>loadPhotoManager().catch(()=>{}),60));
+  document.querySelector('#bottomNav button[data-view="profileView"]')?.addEventListener('click',()=>setTimeout(()=>loadPhotoManager().catch(e=>pmMessage(e.message||'Could not load profile photos.','bad')),80));
+  window.addEventListener('veramor:view-change',e=>{
+    if(e.detail?.view==='profileView')setTimeout(()=>loadPhotoManager().catch(err=>pmMessage(err.message||'Could not load profile photos.','bad')),80);
+  });
+  const profile=document.getElementById('profileView');
+  if(profile&&!profile.classList.contains('hidden'))loadPhotoManager().catch(()=>{});
 }
 
-window.addEventListener('veramor:photos-changed',()=>setTimeout(()=>loadPhotoManager().catch(()=>{}),150));
+window.addEventListener('veramor:photos-changed',()=>setTimeout(()=>loadPhotoManager().catch(()=>{}),160));
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootPhotoManager,{once:true});else bootPhotoManager();
