@@ -174,7 +174,7 @@
     const cards=arr.map(function(p,k){
       const src=pictures(p)[0]||p.photo||'';
       const selected=selectedGroup.has(String(p.id));
-      return `<article class="group-person ${selected?'selected':''}"><div class="group-person-photo"><span class="group-fallback">${initial(p)}</span>${src?`<img src="${esc(src)}" alt="${esc(p.name)}" onerror="this.style.display='none'">`:''}<button class="group-select-btn" onclick="premiumToggleGroup(event,'${esc(String(p.id))}')">${selected?'✓':'+'}</button></div><div class="group-person-copy"><h4>${esc(p.name)}${p.age?', '+esc(p.age):''}</h4><p>${esc(p.job||'')} · ${esc(p.city||'Chicago')}</p><button class="one-on-one-btn" onclick="premiumBreakout(event,${k})">♡ Swipe 1-on-1</button></div></article>`;
+      return `<article class="group-person ${p.demo?'demo-user-media':'real-user-media'} ${selected?'selected':''}"><div class="group-person-photo"><span class="group-fallback">${initial(p)}</span>${src?`<img src="${esc(src)}" alt="${esc(p.name)}" onerror="this.style.display='none'">`:''}<button class="group-select-btn" onclick="premiumToggleGroup(event,'${esc(String(p.id))}')">${selected?'✓':'+'}</button></div><div class="group-person-copy"><h4>${esc(p.name)}${p.age?', '+esc(p.age):''}</h4><p>${esc(p.job||'')} · ${esc(p.city||'Chicago')}</p><button class="one-on-one-btn" onclick="premiumBreakout(event,${k})">♡ Swipe 1-on-1</button></div></article>`;
     }).join('');
     const chosen=arr.filter(p=>selectedGroup.has(String(p.id))).map(p=>p.name);
     document.getElementById('deck').innerHTML=`
