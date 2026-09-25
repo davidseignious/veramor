@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const inviteSb=createClient('https://rfcoworvfqcqallgpozn.supabase.co','sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF',
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  {auth:{persistSession:true,autoRefreshToken:false,detectSessionInUrl:true}});
 const refFromLink=new URLSearchParams(location.search).get('ref');
 if(refFromLink&&/^[A-Za-z0-9]{8}$/.test(refFromLink))sessionStorage.setItem('veramor_pending_ref',refFromLink.toUpperCase());
 
