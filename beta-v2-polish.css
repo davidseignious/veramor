@@ -76,3 +76,38 @@
   .vera-detail-fact{min-height:61px;padding:9px}
   .vera-detail-fact strong{font-size:12px}
 }
+
+
+/* Discovery/profile polish */
+.vera-discovery-facts{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+.vera-discovery-facts span{
+  display:inline-flex;align-items:center;gap:6px;max-width:100%;
+  padding:8px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.035);
+  color:#e9e2ec;font-size:11px;font-weight:750;
+}
+.vera-discovery-facts b{font-size:12px}
+.vera-photo-count{
+  position:absolute;right:14px;bottom:14px;z-index:5;
+  padding:7px 10px;border-radius:999px;
+  background:rgba(0,0,0,.62);backdrop-filter:blur(8px);
+  color:#fff;font-size:10px;font-weight:900;letter-spacing:.04em;
+  border:1px solid rgba(255,255,255,.12)
+}
+.vera-profile-status{
+  display:flex;flex-direction:column;gap:4px;margin:0 0 14px;padding:13px 14px;
+  border-radius:17px;border:1px solid rgba(255,170,77,.25);
+  background:rgba(255,170,77,.08)
+}
+.vera-profile-status.ready{
+  border-color:rgba(99,219,162,.25);
+  background:rgba(99,219,162,.08)
+}
+.vera-profile-status strong{font-size:13px}
+.vera-profile-status span{font-size:11px;color:var(--muted);line-height:1.4}
+#onboardingScreen h3 .muted{font-size:11px;font-weight:600}
+@media(max-width:460px){
+  .vera-discovery-facts{gap:6px}
+  .vera-discovery-facts span{padding:7px 9px;font-size:10px}
+}
