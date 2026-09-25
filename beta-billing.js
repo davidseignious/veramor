@@ -83,4 +83,4 @@ async function installBilling(){
 
 function boot(){installBilling().catch(e=>console.error('billing',e))}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-billingSb.auth.onAuthStateChange(e=>{if(e==='SIGNED_IN'||e==='TOKEN_REFRESHED')setTimeout(boot,100)});
+billingSb.auth.onAuthStateChange(e=>{if(e==='SIGNED_IN')setTimeout(boot,100)});
