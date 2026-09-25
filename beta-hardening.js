@@ -8,6 +8,40 @@ const PRIVACY_VERSION='2026-09-11.1';
 const SAFETY_VERSION='2026-09-11.1';
 const BACKGROUND_NOTICE='VERAMOR DOES NOT CONDUCT CRIMINAL BACKGROUND SCREENINGS ON ITS MEMBERS.';
 const hardeningSb=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:false,detectSessionInUrl:true}});
+let launchConfigCache=null;
+async function getLaunchConfig(force=false){
+  if(launchConfigCache&&!force)return launchConfigCache;
+  try{
+    const {data,error}=await hardeningSb.rpc('launch_config');
+    if(error)throw error;
+    launchConfigCache=data||{};
+  }catch(_e){
+    launchConfigCache={public_launch:false,signup_open:true,maintenance_mode:false,billing_live:false};
+  }
+  return launchConfigCache;
+}
+function applyLaunchConfig(cfg){
+  const signup=document.getElementById('showSignup');
+  if(signup){
+    signup.disabled=cfg.signup_open===false;
+    signup.title=cfg.signup_open===false?'New signups are temporarily paused.':'';
+  }
+  if(cfg.public_launch){
+    document.title='VERAMOR';
+    document.querySelector('.beta')?.replaceChildren(document.createTextNode('LIVE'));
+    const heroPill=document.querySelector('#authScreen .hero .pill');
+    if(heroPill)heroPill.textContent='18+ VERIFIED DATING';
+    document.getElementById('betaEmailNote')?.remove();
+  }
+  if(cfg.maintenance_mode&&!document.getElementById('veraMaintenance')){
+    const m=document.createElement('div');
+    m.id='veraMaintenance';
+    m.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#09080d;color:#fff;display:grid;place-items:center;padding:24px;text-align:center;font-family:Inter,system-ui,sans-serif';
+    m.innerHTML='<div style="max-width:460px"><div style="font-weight:950;letter-spacing:.14em;font-size:24px">VERA<span style="color:#ff4f89">MOR</span></div><h1 style="font-size:28px;margin:22px 0 10px">Brief maintenance</h1><p style="color:#aaa4b4;line-height:1.6">We’re making VERAMOR more reliable. Please try again shortly.</p><button id="veraMaintenanceRetry" style="margin-top:12px;border:0;border-radius:12px;padding:12px 16px;font-weight:850;background:#ff4f89;color:white">Try again</button></div>';
+    document.body.appendChild(m);
+    document.getElementById('veraMaintenanceRetry').onclick=()=>location.reload();
+  }
+}
 
 function notice(target,text,type=''){
   const host=typeof target==='string'?document.querySelector(target):target;
@@ -186,7 +220,7 @@ function installFriendBetaSignupBypass(){
     const btn=document.getElementById('authSubmit');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notice('#authMsg','Enter a valid email address.','warn');
     if(password.length<8)return notice('#authMsg','Password must be at least 8 characters.','warn');
-    if(isSignup&&password.length<10)return notice('#authMsg','New beta accounts require at least 10 characters.','warn');
+    if(isSignup&&password.length<10)return notice('#authMsg','New accounts require at least 10 characters.','warn');
     if(isSignup&&password.length>128)return notice('#authMsg','Password must be 128 characters or fewer.','warn');
     if(isSignup){
       ensureLegalSignupUi();
@@ -201,7 +235,26 @@ function installFriendBetaSignupBypass(){
     notice('#authMsg','');
     let signedIn=false;
     try{
-      if(isSignup){
+      const cfg=await getLaunchConfig(true);
+      if(isSignup&&cfg.signup_open===false)throw new Error('New signups are temporarily paused. Please try again later.');
+
+      let authData=null;
+      if(isSignup&&cfg.public_launch){
+        const {data,error}=await hardeningSb.auth.signUp({
+          email,password,
+          options:{emailRedirectTo:BETA_URL}
+        });
+        if(error)throw error;
+        authData=data;
+        if(!data?.session){
+          localStorage.setItem('veramor_pending_legal_acceptance',JSON.stringify({
+            terms:TERMS_VERSION,privacy:PRIVACY_VERSION,safety:SAFETY_VERSION,background:true
+          }));
+          notice('#authMsg','Account created. Check your email and confirm your address, then return to VERAMOR to log in.','ok');
+          if(btn){btn.disabled=false;btn.textContent=old}
+          return;
+        }
+      }else if(isSignup){
         const r=await fetch(URL+'/functions/v1/beta-signup',{
           method:'POST',
           headers:{'content-type':'application/json','apikey':KEY},
@@ -211,10 +264,13 @@ function installFriendBetaSignupBypass(){
         if(!r.ok)throw new Error(body.error||'Could not create account.');
       }
 
-      const {data,error}=await hardeningSb.auth.signInWithPassword({email,password});
-      if(error)throw error;
+      if(!authData?.session){
+        const {data,error}=await hardeningSb.auth.signInWithPassword({email,password});
+        if(error)throw error;
+        authData=data;
+      }
       signedIn=true;
-      if(isSignup)await persistLegalAcceptance(data?.user);
+      if(isSignup)await persistLegalAcceptance(authData?.user);
       let setupWarning=null;
       try{await ensurePostLoginReady()}catch(setupErr){
         setupWarning=friendlyAuthError(setupErr);
@@ -235,7 +291,7 @@ function installFriendBetaSignupBypass(){
   if(legal&&!document.getElementById('betaEmailNote')){
     const p=document.createElement('p');
     p.id='betaEmailNote';p.className='notice';
-    p.textContent='Friend Beta testing: accounts activate immediately after signup. Email confirmation will return before public launch.';
+    p.textContent='Friend Beta testing: accounts activate immediately after signup. Public launch switches to email-confirmed signup.';
     legal.insertAdjacentElement('beforebegin',p);
   }
 }
@@ -326,6 +382,7 @@ function addEnterToSend(){
 }
 
 window.addEventListener('load',()=>{
+  getLaunchConfig(true).then(applyLaunchConfig).catch(()=>{});
   ensureLegalSignupUi();
   installFriendBetaSignupBypass();
   addForgotPassword();
