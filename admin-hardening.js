@@ -37,11 +37,12 @@
       +rows.map(function(p){
         const st=p.launch_status||{};
         const ready=!!st.ready_for_review;
+        const mediaOnly=p.review_type==='media_update';
         const name=esc(p.display_name||'New user');
         const id=esc(p.id);
         return '<div class="panel" style="margin-top:14px;text-align:left">'
-          +'<div class="identity"><img class="avatar" src="'+esc(p.avatar||'')+'"><div><div class="name">'+name+'</div><div class="meta">'+esc(p.city||p.area_label||'Location not added')+' · '+esc(p.verification_status||'unverified')+'</div></div></div>'
-          +'<div class="tags" style="margin-top:10px"><span class="tag">Photos '+(Number(st.photo_count)||0)+'/4</span><span class="tag">Face video '+(st.face_video_submitted?'✓':'missing')+'</span><span class="tag">Prompts '+(Array.isArray(p.prompts)?p.prompts.length:0)+'/3</span><span class="tag">Submitted</span></div>'
+          +'<div class="identity"><img class="avatar" src="'+esc(p.avatar||'')+'"><div><div class="name">'+name+'</div><div class="meta">'+esc(p.city||p.area_label||'Location not added')+' · '+(mediaOnly?'verified identity · media review':esc(p.verification_status||'unverified'))+'</div></div></div>'
+          +'<div class="tags" style="margin-top:10px"><span class="tag">'+(mediaOnly?'PHOTO/MEDIA UPDATE':'FULL VERIFICATION')+'</span><span class="tag">Photos '+(Number(st.photo_count)||0)+'/4</span><span class="tag">Face video '+(st.face_video_submitted?'✓ saved':'missing')+'</span><span class="tag">Prompts '+(Array.isArray(p.prompts)?p.prompts.length:0)+'/3</span></div>'
           +mediaStrip(p)
           +'<div class="panel" style="margin:10px 0"><strong>Prompt answers</strong>'
           +(Array.isArray(p.prompts)?p.prompts:[]).map(function(row){
@@ -51,7 +52,7 @@
           }).join('')+'</div>'
           +(p.face_video?'<video src="'+esc(p.face_video)+'" controls playsinline style="width:100%;max-height:340px;border-radius:14px;background:#000;margin:8px 0"></video>':'<div class="notice">Private face-verification video has not been submitted yet.</div>')
           +'<div class="actions" style="margin-top:10px">'
-          +(ready?'<button class="btn primary" onclick="verifyPending(\''+id+'\',true)">Approve profile</button><button class="btn danger" onclick="verifyPending(\''+id+'\',false)">Reject</button>':'<button class="btn" disabled>Waiting for required uploads</button>')
+          +(ready?'<button class="btn primary" onclick="verifyPending(\''+id+'\',true)">'+(mediaOnly?'Approve media':'Approve profile')+'</button><button class="btn danger" onclick="verifyPending(\''+id+'\',false)">'+(mediaOnly?'Reject media':'Reject')+'</button>':'<button class="btn" disabled>Waiting for required uploads</button>')
           +'</div><div id="verify-'+id+'"></div></div>';
       }).join('');
     $('#dash').appendChild(panel);
