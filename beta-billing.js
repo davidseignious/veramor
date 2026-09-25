@@ -64,9 +64,9 @@ async function installBilling(){
   panel.innerHTML=`
     <div class="section-title"><div><span class="pill">VERAMOR BILLING</span><h3 style="margin:7px 0 0">Plans & rewind credits</h3></div><span class="pill ${billingConfigured?'ok':'warn'}">${billingConfigured?'CONNECTED':'NOT CONNECTED'}</span></div>
     <div class="notice ${billingConfigured?'ok':'warn'}">${billingConfigured?'Secure VERAMOR payments are connected.':'Payments are coming soon. VERAMOR billing is kept completely separate from Serviq, so purchases stay disabled until the dedicated VERAMOR Stripe account is connected.'}</div>
-    <p class="muted">Current plan: <strong>${bEsc(String(plan||'free').toUpperCase())}</strong>. Your first rewind is free once; after that, rewinds use a purchased or weekly-gift credit.</p>
+    <p class="muted">Current plan: <strong>${bEsc(String(plan||'free').toUpperCase())}</strong>. Paid plans unlock read receipts. Your first rewind is free once; after that, rewinds use a purchased or weekly-gift credit.</p>
     <div class="vera-billing-grid">
-      ${planRows.map(x=>`<article class="vera-billing-card"><span class="pill">${x.plan_code==='premium'?'PREMIUM':'PLUS'}</span><h4>${bEsc(x.display_name)}</h4><strong class="vera-price">${money(x.amount_cents)}${x.recurring_interval?'/'+bEsc(x.recurring_interval):''}</strong><button class="btn primary full" data-buy="${bEsc(x.product_key)}" ${billingConfigured?'':'disabled'}>Choose plan</button></article>`).join('')}
+      ${planRows.map(x=>`<article class="vera-billing-card"><span class="pill">${x.plan_code==='premium'?'PREMIUM':'PLUS'}</span><h4>${bEsc(x.display_name)}</h4><strong class="vera-price">${money(x.amount_cents)}${x.recurring_interval?'/'+bEsc(x.recurring_interval):''}</strong><div class="vera-plan-feature">✓ Read receipts</div><button class="btn primary full" data-buy="${bEsc(x.product_key)}" ${billingConfigured?'':'disabled'}>Choose plan</button></article>`).join('')}
     </div>
     <div class="vera-billing-grid vera-rewind-grid">
       ${rewindRows.map(x=>`<article class="vera-billing-card"><span class="pill">REWIND CREDIT</span><h4>${bEsc(x.display_name)}</h4><strong class="vera-price">${money(x.amount_cents)}</strong><button class="btn full" data-buy="${bEsc(x.product_key)}" ${billingConfigured?'':'disabled'}>Buy</button></article>`).join('')}
