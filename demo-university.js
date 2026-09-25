@@ -14,7 +14,7 @@
   }
 
   filtered=function(){
-    let all=demos.concat(live);
+    let all=live.concat(demos);
     if(g==='men')all=all.filter(function(p){const x=String(p.gender||'').toLowerCase();return x==='man'||x==='male'});
     else if(g==='women')all=all.filter(function(p){const x=String(p.gender||'').toLowerCase();return x==='woman'||x==='female'});
     else if(g==='university')all=all.filter(function(p){return !!(p.university||p.university_name||p.university_verified)});
