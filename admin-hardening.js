@@ -14,6 +14,58 @@
     $('#dash').appendChild(panel);
   };
 
+  function launchSwitch(flag,label,checked,description,danger){
+    return '<label class="notice" style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between">'
+      +'<span><strong>'+esc(label)+'</strong><small class="muted" style="display:block;margin-top:4px">'+esc(description)+'</small></span>'
+      +'<input type="checkbox" data-launch-flag="'+esc(flag)+'" '+(checked?'checked':'')+' style="width:22px;height:22px;flex:0 0 auto;accent-color:'+(danger?'#ff6b73':'#ff4f89')+'"></label>';
+  }
+
+  function renderLaunchControls(cfg,dashboard){
+    document.getElementById('publicLaunchControls')?.remove();
+    const s=dashboard?.summary||{},health=dashboard?.beta_health||{};
+    const panel=document.createElement('div');
+    panel.className='panel section';
+    panel.id='publicLaunchControls';
+    const publicOn=cfg?.public_launch===true,signups=cfg?.signup_open!==false,maintenance=cfg?.maintenance_mode===true;
+    const openReports=Number(s.open_reports)||0,errors=Number(health.client_errors_24h)||0;
+    panel.innerHTML='<span class="pill">PUBLIC LAUNCH CONTROL</span>'
+      +'<h3 style="margin:8px 0 4px">'+(publicOn?'Public mode is ON':'Staged launch mode')+'</h3>'
+      +'<p class="muted">These switches let you pause VERAMOR without a redeploy and move signup from Friend Beta activation to the public email-confirmed flow.</p>'
+      +'<div class="grid" style="margin:12px 0">'
+      +'<div class="stat"><small>Open reports</small><b>'+openReports+'</b></div>'
+      +'<div class="stat"><small>Client errors · 24h</small><b>'+errors+'</b></div>'
+      +'<div class="stat"><small>Launch-ready profiles</small><b>'+(Number(s.ready_profiles)||0)+'</b></div>'
+      +'<div class="stat"><small>Signups</small><b>'+(signups?'OPEN':'PAUSED')+'</b></div>'
+      +'</div>'
+      +launchSwitch('public_launch','Public launch mode',publicOn,'Uses email-confirmed signup and removes Friend Beta labeling.',true)
+      +launchSwitch('signup_open','Allow new signups',signups,'Turn this off instantly if abuse, spam, or capacity becomes a problem.',false)
+      +launchSwitch('maintenance_mode','Maintenance mode',maintenance,'Shows a full-screen maintenance notice to users while you work.',true)
+      +'<div class="notice '+(openReports===0&&errors===0?'success':'')+'"><strong>Launch gate:</strong> '+(openReports===0?'Safety queue clear.':'Resolve open safety reports before a larger rollout.')+' '+(errors===0?'No client errors recorded in the last 24 hours.':'Review client errors before increasing traffic.')+'</div>'
+      +'<div id="launchControlMsg"></div>';
+    $('#dash').appendChild(panel);
+    panel.querySelectorAll('[data-launch-flag]').forEach(function(input){
+      input.addEventListener('change',async function(){
+        const flag=input.dataset.launchFlag,enabled=input.checked;
+        if(flag==='public_launch'&&enabled&&!confirm('Turn on PUBLIC LAUNCH mode? New accounts will use the public email-confirmation signup flow.')){
+          input.checked=false;return;
+        }
+        if(flag==='maintenance_mode'&&enabled&&!confirm('Turn on maintenance mode? Users will be blocked by the maintenance screen until you switch it off.')){
+          input.checked=false;return;
+        }
+        input.disabled=true;
+        const msg=document.getElementById('launchControlMsg');
+        if(msg)msg.innerHTML='<div class="notice">Saving launch control…</div>';
+        try{
+          const next=await api('set_launch_flag',{flag:flag,enabled:enabled});
+          renderLaunchControls(next,dashboard);
+        }catch(e){
+          input.checked=!enabled;
+          if(msg)msg.innerHTML='<div class="notice">'+esc(e.message||'Could not update launch control')+'</div>';
+        }finally{input.disabled=false}
+      });
+    });
+  }
+
   function mediaStrip(p){
     const photos=Array.isArray(p.photos)?p.photos:[];
     if(!photos.length) return '<div class="notice">No profile photos uploaded yet.</div>';
@@ -75,6 +127,7 @@
     live=(j.profiles||[]).map(normalize);
     renderDash(j.dashboard||{});
     renderPending(Array.isArray(j.pending_profiles)?j.pending_profiles:[]);
+    try{renderLaunchControls(await api('launch_config'),j.dashboard||{})}catch(e){console.error('Launch controls unavailable',e)}
     buildDeck();
   };
 })();
