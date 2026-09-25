@@ -142,7 +142,7 @@
     host.innerHTML=`
       <div class="approved-deck-meta"><span><b>Profile ${idx+1}</b> of ${deck.length}</span><span>${usedLikes()}/10 free likes used</span></div>
       <article class="premium-profile-card">
-        <div class="premium-profile-media ${src?'':'media-missing'}">
+        <div class="premium-profile-media ${p.demo?'demo-user-media':'real-user-media'} ${src?'':'media-missing'}">
           <span class="premium-fallback">${initial(p)}</span>
           ${src?`<img src="${esc(src)}" alt="${esc(p.name)} profile photo ${pi+1}" onerror="this.style.display='none';this.parentNode.classList.add('media-missing')">`:''}
           <div class="profile-shade"></div>
