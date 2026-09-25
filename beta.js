@@ -24,24 +24,29 @@ $('#heightInches').insertAdjacentHTML('beforeend',Array.from({length:61},(_,i)=>
 
 async function signed(bucket,path,ttl=900){if(!path)return null;if(/^https?:\/\//i.test(path))return path;const {data,error}=await sb.storage.from(bucket).createSignedUrl(path,ttl);return error?null:data?.signedUrl||null}
 async function listOwned(bucket,id=user.id){const {data,error}=await sb.storage.from(bucket).list(id,{limit:20,sortBy:{column:'created_at',order:'asc'}});if(error)throw error;return data||[]}
-async function mediaForProfile(p){const id=p.id;let imageRows=[];try{imageRows=await listOwned('profile-media',id)}catch(e){}
-  const urls=[];for(const f of imageRows){if(!f?.name||!f.id)continue;const u=await signed('profile-media',`${id}/${f.name}`);if(u)urls.push({path:`${id}/${f.name}`,url:u,name:f.name})}
-  let video=null;if(p.intro_video_path)video=await signed('profile-videos',p.intro_video_path);
-  if(!urls.length&&p.avatar_url)urls.push({path:null,url:p.avatar_url,name:'profile'});
-  if(urls.length){
-    const order=Array.isArray(p.photo_order)?p.photo_order:[];
-    const rank=new Map(order.map((path,i)=>[path,i]));
-    urls.sort((a,b)=>{
-      const ar=rank.has(a.path)?rank.get(a.path):9999;
-      const br=rank.has(b.path)?rank.get(b.path):9999;
-      if(ar!==br)return ar-br;
-      if(p.avatar_path)return Number(b.path===p.avatar_path)-Number(a.path===p.avatar_path);
-      return 0;
-    });
+async function mediaForProfile(p){
+  const id=p.id;
+  let imageRows=[];
+  try{imageRows=await listOwned('profile-media',id)}catch(e){console.warn('VERAMOR photo listing failed; using saved photo order.',e)}
+  const savedOrder=Array.isArray(p.photo_order)?p.photo_order.filter(Boolean):[];
+  const candidatePaths=[];
+  for(const path of savedOrder)if(!candidatePaths.includes(path))candidatePaths.push(path);
+  if(p.avatar_path&&!candidatePaths.includes(p.avatar_path))candidatePaths.push(p.avatar_path);
+  for(const f of imageRows){
+    if(!f?.name||!f.id)continue;
+    const path=id+'/'+f.name;
+    if(!candidatePaths.includes(path))candidatePaths.push(path);
   }
+  const urls=[];
+  for(const path of candidatePaths){
+    const u=await signed('profile-media',path);
+    if(u)urls.push({path,url:u,name:path.split('/').pop()||'profile'});
+  }
+  let video=null;
+  if(p.intro_video_path)video=await signed('profile-videos',p.intro_video_path);
+  if(!urls.length&&p.avatar_url)urls.push({path:null,url:p.avatar_url,name:'profile'});
   return {photos:urls,video};
 }
-
 async function ensureUserRows(){
   const {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();if(error)throw error;
   if(!p){const {error:e}=await sb.from('profiles').insert({id:user.id});if(e)throw e}
@@ -90,12 +95,21 @@ async function saveProfileDetails(show=true){
 $('#saveProfile').onclick=async()=>{const b=$('#saveProfile');setBusy(b,true,'Saving…');try{await saveProfileDetails(true)}catch(e){message('#profileMsg',e.message,'bad')}finally{setBusy(b,false)}};
 
 async function refreshMedia(){
-  photos=[];const rows=await listOwned('profile-media');
-  for(const f of rows){if(!f?.id||!f.name)continue;const path=`${user.id}/${f.name}`;const u=await signed('profile-media',path);if(u)photos.push({path,url:u,name:f.name})}
-  const vr=await listOwned('verification-media');faceUrl=null;for(const f of vr){if(!f?.id||!f.name)continue;if(String(f.metadata?.mimetype||'').startsWith('video/')||/\.(mp4|mov|webm)$/i.test(f.name)){faceUrl=await signed('verification-media',`${user.id}/${f.name}`);if(faceUrl)break}}
-  await fetchMe();renderPhotos();renderFace();renderLaunchChecklist();
-}
-function renderPhotos(){$('#photoGrid').innerHTML=photos.map((p,i)=>`<div class="photo"><img src="${esc(p.url)}" alt="Profile photo ${i+1}"><button title="Remove" data-remove-photo="${esc(p.path)}">×</button></div>`).join('');$$('[data-remove-photo]').forEach(b=>b.onclick=()=>removePhoto(b.dataset.removePhoto))}
+  await fetchMe();
+  const m=await mediaForProfile(profile);
+  photos=m.photos||[];
+  let vr=[];
+  try{vr=await listOwned('verification-media')}catch(e){console.warn('VERAMOR verification media listing failed',e)}
+  faceUrl=null;
+  for(const f of vr){
+    if(!f?.id||!f.name)continue;
+    if(String(f.metadata?.mimetype||'').startsWith('video/')||/\.(mp4|mov|webm)$/i.test(f.name)){
+      faceUrl=await signed('verification-media',user.id+'/'+f.name);
+      if(faceUrl)break;
+    }
+  }
+  renderPhotos();renderFace();renderLaunchChecklist();
+}function renderPhotos(){$('#photoGrid').innerHTML=photos.map((p,i)=>`<div class="photo"><img src="${esc(p.url)}" alt="Profile photo ${i+1}"><button title="Remove" data-remove-photo="${esc(p.path)}">×</button></div>`).join('');$$('[data-remove-photo]').forEach(b=>b.onclick=()=>removePhoto(b.dataset.removePhoto))}
 function renderFace(){$('#facePreview').innerHTML=faceUrl?`<video src="${esc(faceUrl)}" controls playsinline></video><div class="notice ok">Private face video uploaded.</div>`:'<div class="notice">No face video uploaded yet.</div>'}
 function renderLaunchChecklist(){const st=launchStatus||{};$('#photoReq').textContent=`${st.photo_count||0}/4`;$('#faceReq').textContent=st.face_video_submitted?'Ready':'Missing';$('#detailReq').textContent=st.details_ready?'Ready':'Incomplete';$('#prog2').classList.toggle('on',!!st.details_ready);$('#prog3').classList.toggle('on',!!(st.media_ready&&st.details_ready));const pct=(st.details_ready?34:0)+(Math.min(4,Number(st.photo_count)||0)/4*33)+(st.face_video_submitted?33:0);$('#setupPercent').textContent=`${Math.round(pct)}%`;
   const miss=Array.isArray(st.missing_details)?st.missing_details:[];$('#launchChecklist').innerHTML=`<div class="notice ${st.details_ready?'ok':'warn'}">${st.details_ready?'✓ Required profile details complete':'Still needed: '+esc(miss.join(', ')||'profile details')}</div><div class="notice ${(st.photo_count||0)>=4?'ok':'warn'}">${(st.photo_count||0)>=4?'✓ Four-photo minimum met':`${st.photos_remaining??4} more photo${Number(st.photos_remaining)===1?'':'s'} required`}</div><div class="notice ${st.face_video_submitted?'ok':'warn'}">${st.face_video_submitted?'✓ Private face video submitted':'Face verification video required'}</div>`;
@@ -103,10 +117,44 @@ function renderLaunchChecklist(){const st=launchStatus||{};$('#photoReq').textCo
 }
 $('#returnToApp').onclick=async()=>{await fetchMe();if(launchStatus.launch_ready){showScreen('appScreen');await renderMyProfile();showView('profileView')}else{showScreen('waitingScreen');message('#waitMsg','Your new photo is waiting for admin review. Your existing face verification is saved.','warn')}};
 
-$('#uploadPhotos').onclick=async()=>{const btn=$('#uploadPhotos'),files=Array.from($('#photoInput').files||[]);if(!files.length)return message('#photoMsg','Choose photos first.','warn');if(photos.length+files.length>6)return message('#photoMsg','VERAMOR allows up to 6 profile photos.','bad');setBusy(btn,true,'Uploading…');try{for(const file of files){if(!file.type.startsWith('image/'))throw new Error('Profile photos must be image files.');if(file.size>10*1024*1024)throw new Error('Each photo must be 10 MB or smaller.');const path=`${user.id}/${uuid()}.${ext(file)}`;const {error}=await sb.storage.from('profile-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error}
-  const rows=await listOwned('profile-media');const first=rows.find(x=>x.id&&x.name);if(first){await sb.from('profiles').update({avatar_path:`${user.id}/${first.name}`,avatar_url:null}).eq('id',user.id)}$('#photoInput').value='';await refreshMedia();message('#photoMsg','Photos uploaded.','ok')}catch(e){message('#photoMsg',e.message,'bad')}finally{setBusy(btn,false)}};
-async function removePhoto(path){if(!confirm('Remove this photo?'))return;try{const {error}=await sb.storage.from('profile-media').remove([path]);if(error)throw error;const rows=await listOwned('profile-media');const first=rows.find(x=>x.id&&x.name);await sb.from('profiles').update({avatar_path:first?`${user.id}/${first.name}`:null,avatar_url:null}).eq('id',user.id);await refreshMedia()}catch(e){message('#photoMsg',e.message,'bad')}}
-
+$('#uploadPhotos').onclick=async()=>{
+  const btn=$('#uploadPhotos'),files=Array.from($('#photoInput').files||[]);
+  if(!files.length)return message('#photoMsg','Choose photos first.','warn');
+  if(photos.length+files.length>6)return message('#photoMsg','VERAMOR allows up to 6 profile photos.','bad');
+  setBusy(btn,true,'Uploading…');
+  try{
+    const added=[];
+    for(const file of files){
+      if(!file.type.startsWith('image/'))throw new Error('Profile photos must be image files.');
+      if(file.size>10*1024*1024)throw new Error('Each photo must be 10 MB or smaller.');
+      const path=user.id+'/'+uuid()+'.'+ext(file);
+      const {error}=await sb.storage.from('profile-media').upload(path,file,{contentType:file.type,upsert:false});
+      if(error)throw error;
+      added.push(path);
+    }
+    const current=Array.isArray(profile?.photo_order)?profile.photo_order.filter(Boolean):photos.map(x=>x.path).filter(Boolean);
+    const next=[...current,...added].filter((x,i,a)=>a.indexOf(x)===i).slice(0,6);
+    const avatar=next[0]||null;
+    const {error:pe}=await sb.from('profiles').update({avatar_path:avatar,avatar_url:null,photo_order:next}).eq('id',user.id);
+    if(pe)throw pe;
+    $('#photoInput').value='';
+    await refreshMedia();
+    message('#photoMsg',added.length+' photo'+(added.length===1?'':'s')+' uploaded. Your existing photos were kept.','ok');
+  }catch(e){message('#photoMsg',e.message,'bad')}finally{setBusy(btn,false)}
+};
+async function removePhoto(path){
+  if(!confirm('Remove this photo?'))return;
+  try{
+    const {error}=await sb.storage.from('profile-media').remove([path]);
+    if(error)throw error;
+    const current=Array.isArray(profile?.photo_order)?profile.photo_order.filter(Boolean):photos.map(x=>x.path).filter(Boolean);
+    const next=current.filter(x=>x!==path);
+    const {error:pe}=await sb.from('profiles').update({avatar_path:next[0]||null,avatar_url:null,photo_order:next}).eq('id',user.id);
+    if(pe)throw pe;
+    await refreshMedia();
+    message('#photoMsg','Photo removed.','ok');
+  }catch(e){message('#photoMsg',e.message,'bad')}
+}
 $('#uploadFace').onclick=async()=>{const btn=$('#uploadFace'),file=$('#faceVideoInput').files?.[0];if(!file)return message('#faceMsg','Choose or record a face video first.','warn');if(!file.type.startsWith('video/'))return message('#faceMsg','Face verification must be a video.','bad');if(file.size>50*1024*1024)return message('#faceMsg','Face video must be 50 MB or smaller.','bad');setBusy(btn,true,'Uploading…');try{const old=await listOwned('verification-media');const oldPaths=old.filter(x=>x.id&&x.name).map(x=>`${user.id}/${x.name}`);if(oldPaths.length)await sb.storage.from('verification-media').remove(oldPaths);const path=`${user.id}/face-${uuid()}.${ext(file)}`;const {error}=await sb.storage.from('verification-media').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;const {error:pe}=await sb.from('profiles').update({presence_video_path:path,presence_prompt:'Beta face verification',live_capture_at:new Date().toISOString()}).eq('id',user.id);if(pe)throw pe;$('#faceVideoInput').value='';await refreshMedia();message('#faceMsg','Private face video uploaded.','ok')}catch(e){message('#faceMsg',e.message,'bad')}finally{setBusy(btn,false)}};
 
 $('#uploadIntro').onclick=async()=>{const btn=$('#uploadIntro'),file=$('#introVideoInput').files?.[0];if(!file)return message('#introMsg','Choose a public intro video first.','warn');if(!file.type.startsWith('video/'))return message('#introMsg','Intro must be a video.','bad');if(file.size>50*1024*1024)return message('#introMsg','Video must be 50 MB or smaller.','bad');setBusy(btn,true,'Uploading…');try{if(profile.intro_video_path)await sb.storage.from('profile-videos').remove([profile.intro_video_path]);const path=`${user.id}/intro-${uuid()}.${ext(file)}`;const {error}=await sb.storage.from('profile-videos').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;const {error:pe}=await sb.from('profiles').update({intro_video_path:path}).eq('id',user.id);if(pe)throw pe;$('#introVideoInput').value='';await fetchMe();message('#introMsg','Public profile video saved.','ok')}catch(e){message('#introMsg',e.message,'bad')}finally{setBusy(btn,false)}};
