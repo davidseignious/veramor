@@ -146,7 +146,22 @@ async function loadSettings(){const {data,error}=await sb.from('user_settings').
 $('#saveSettings').onclick=async()=>{const b=$('#saveSettings');setBusy(b,true,'Saving…');try{const {error}=await sb.from('user_settings').update({discovery_enabled:$('#discoveryToggle').checked,updated_at:new Date().toISOString()}).eq('user_id',user.id);if(error)throw error;message('#settingsMsg','Settings saved.','ok')}catch(e){message('#settingsMsg',e.message,'bad')}finally{setBusy(b,false)}};
 $('#deleteAccount').onclick=async()=>{const typed=prompt('This permanently deletes your VERAMOR account and private media. Type DELETE to continue.');if(typed!=='DELETE')return;const b=$('#deleteAccount');setBusy(b,true,'Deleting…');try{const {data,error}=await sb.functions.invoke('delete-account',{body:{confirm:true}});if(error)throw error;if(!data?.deleted)throw new Error('Deletion did not complete.');await sb.auth.signOut({scope:'local'}).catch(()=>{});session=null;user=null;profile=null;showScreen('authScreen');message('#authMsg','Your VERAMOR account was deleted.','ok')}catch(e){message('#deleteMsg',e.message||'Account deletion failed.','bad')}finally{setBusy(b,false)}};
 
-function showView(id){$$('.appView').forEach(v=>v.classList.toggle('hidden',v.id!==id));$$('#bottomNav button').forEach(b=>b.classList.toggle('on',b.dataset.view===id));if(id==='matchesView')loadMatches().catch(e=>console.error(e));if(id==='profileView')renderMyProfile().catch(e=>console.error(e));if(id==='settingsView')loadSettings().catch(e=>console.error(e));window.scrollTo({top:0,behavior:'smooth'})}
+function showView(id){
+  const target=$('#'+id);
+  if(!target||!target.classList.contains('appView'))return;
+  $('.appView').forEach(v=>v.classList.toggle('hidden',v.id!==id));
+  $('#bottomNav button[data-view]').forEach(b=>{
+    const active=b.dataset.view===id;
+    b.classList.toggle('on',active);
+    b.setAttribute('aria-selected',active?'true':'false');
+  });
+  if(id==='matchesView')loadMatches().catch(e=>console.error('Matches load failed',e));
+  if(id==='profileView')renderMyProfile().catch(e=>console.error('Profile load failed',e));
+  if(id==='settingsView')loadSettings().catch(e=>console.error('Settings load failed',e));
+  window.dispatchEvent(new CustomEvent('veramor:view-change',{detail:{view:id}}));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.VERAMOR_SHOW_VIEW=showView;
 $('#bottomNav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#refreshDiscovery').onclick=()=>loadDiscovery().catch(e=>alert(e.message));$('#undoPass').onclick=undoLastPass;$('#refreshMatches').onclick=()=>loadMatches().catch(e=>alert(e.message));
 function showModal(id){$('#'+id).classList.remove('hidden')}function closeModal(id){$('#'+id).classList.add('hidden');if(id==='matchModal'){clearInterval(chatTimer);activeMatch=null}}$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id)}));
 
