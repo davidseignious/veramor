@@ -28,8 +28,16 @@ async function mediaForProfile(p){const id=p.id;let imageRows=[];try{imageRows=a
   const urls=[];for(const f of imageRows){if(!f?.name||!f.id)continue;const u=await signed('profile-media',`${id}/${f.name}`);if(u)urls.push({path:`${id}/${f.name}`,url:u,name:f.name})}
   let video=null;if(p.intro_video_path)video=await signed('profile-videos',p.intro_video_path);
   if(!urls.length&&p.avatar_url)urls.push({path:null,url:p.avatar_url,name:'profile'});
-  if(p.avatar_path&&urls.length){
-    urls.sort((a,b)=>Number(b.path===p.avatar_path)-Number(a.path===p.avatar_path));
+  if(urls.length){
+    const order=Array.isArray(p.photo_order)?p.photo_order:[];
+    const rank=new Map(order.map((path,i)=>[path,i]));
+    urls.sort((a,b)=>{
+      const ar=rank.has(a.path)?rank.get(a.path):9999;
+      const br=rank.has(b.path)?rank.get(b.path):9999;
+      if(ar!==br)return ar-br;
+      if(p.avatar_path)return Number(b.path===p.avatar_path)-Number(a.path===p.avatar_path);
+      return 0;
+    });
   }
   return {photos:urls,video};
 }
@@ -122,6 +130,45 @@ async function passGroup(group){try{for(const p of group){const {error}=await sb
 async function undoLastPass(){const b=$('#undoPass');if(!b)return;setBusy(b,true,'Undoing…');try{const {data,error}=await sb.rpc('undo_last_pass');if(error)throw error;if(!data){lastPassedId=null;alert('There is no recent pass to undo.');return}lastPassedId=null;await loadDiscovery(data)}catch(e){alert(e.message||'Could not undo that pass.')}finally{setBusy(b,false);await refreshRewindStatus()}}
 async function likeCurrent(p,superLike){if(p.is_demo_profile){alert('This is an AI demo profile, not a real person. Demo profiles cannot create matches.');await nextCard();return}try{const fn=superLike?'super_like_profile':'like_profile';const {data,error}=await sb.rpc(fn,{target_user:p.id});if(error)throw error;if(data?.matched)showNewMatch(p,data.match_id);await nextCard()}catch(e){alert(e.message)}}
 function showNewMatch(p,matchId){$('#matchModalTitle').textContent="It's a match";$('#matchModalBody').innerHTML=`<div class="hero"><div class="heart">♥</div><h2>You + ${esc(p.display_name)}</h2><p class="muted">One Chemistry Check answer from each of you unlocks messages.</p><button class="btn primary" id="openNewMatch">Open match</button></div>`;showModal('matchModal');$('#openNewMatch').onclick=async()=>{closeModal('matchModal');await loadMatches();const m=matches.find(x=>x.id===matchId);if(m)openMatch(m)}}
+async function previewMyProfileAsOthers(){
+  await fetchMe();
+  const p=await decorate({...profile,is_demo_profile:false,distance_miles:null});
+  const m=p._media||{photos:[],video:null};
+  const media=m.video
+    ? `<video src="${esc(m.video)}" poster="${esc(m.photos[0]?.url||'')}" controls playsinline preload="metadata"></video>`
+    : `<img src="${esc(m.photos[0]?.url||'')}" alt="${esc(p.display_name)}">`;
+  $('#profileModalBody').dataset.profileId=p.id;
+  $('#profileModalBody').classList.add('real-user-profile');
+  $('#profileModalBody').classList.remove('demo-user-profile');
+  $('#profileModalBody').innerHTML=`
+    <div class="notice ok"><strong>PROFILE PREVIEW</strong><br>This is how your profile appears to another verified person in Discovery.</div>
+    <article class="card profile-card vera-self-preview-card">
+      <div class="profile-media real-user-media">
+        ${media}
+        <span class="pill ok profile-badge">VERIFIED BETA</span>
+        ${formatAge(p)?`<span class="age-badge">AGE ${formatAge(p)}</span>`:''}
+        <div class="profile-overlay">
+          <h2>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}</h2>
+          <div>${esc(p.occupation||'')}${p.city?` · ${esc(p.city)}`:''}</div>
+          <div class="tags">${(p.interests||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="details">
+        <p>${esc(p.bio||'')}</p>
+        ${lifestyleHtml(p)}
+        <button class="btn full" id="previewFullProfileBtn" type="button">View full profile preview</button>
+      </div>
+      <div class="swipe-actions vera-preview-actions">
+        <button class="btn" type="button" disabled>Skip</button>
+        <button class="btn primary" type="button" disabled>Connect</button>
+        <button class="btn" type="button" disabled>Signal</button>
+      </div>
+    </article>`;
+  showModal('profileModal');
+  $('#previewFullProfileBtn').onclick=()=>openFullProfile(p);
+}
+window.VERAMOR_PREVIEW_MY_PROFILE=previewMyProfileAsOthers;
+
 function openFullProfile(p){const m=p._media||{photos:[]};$('#profileModalBody').dataset.profileId=p.id;$('#profileModalBody').classList.toggle('real-user-profile',!p.is_demo_profile);$('#profileModalBody').classList.toggle('demo-user-profile',!!p.is_demo_profile);$('#profileModalBody').innerHTML=`${p.is_demo_profile?'<div class="notice warn"><strong>AI DEMO · NOT A REAL PERSON</strong><br>This synthetic profile exists only to fill the beta deck when there are not enough real profiles.</div>':''}<h2>${esc(p.display_name)}${formatAge(p)?`, ${formatAge(p)}`:''}</h2><p class="muted">${esc(p.occupation||'')}${p.city?` · ${esc(p.city)}`:''}</p><div class="photo-grid">${m.photos.map(x=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo"></div>`).join('')}</div><p>${esc(p.bio||'')}</p><div class="tags">${(p.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(p)}<div class="prompt"><small>Looking for</small><strong>${esc(p.relationship_intent||'Not specified')}</strong></div>`;showModal('profileModal')}
 
 function openSafety(p,context={surface:'profile'}){const excerpt=context.message_excerpt?`<div class="report-context"><small>REPORTED MESSAGE</small>${esc(context.message_excerpt)}</div>`:'';$('#safetyModalBody').innerHTML=`<h2>${esc(p.display_name)}</h2><p class="muted">Blocking removes this person from discovery and ends any active connection. Reports go to beta moderation with the exact profile or conversation context attached.</p>${excerpt}<div class="field"><label>Report reason</label><select id="reportReason"><option>Fake or impersonation</option><option>Harassment</option><option>Inappropriate content</option><option>Solicitation or spam</option><option>Under 18 concern</option><option>Threat or safety concern</option><option>Other</option></select></div><div class="field"><label>Details (optional)</label><textarea id="reportDetails" maxlength="2000"></textarea></div><div class="actions"><button class="btn danger" id="reportUser">Report</button><button class="btn danger" id="blockUser">Block</button></div><div id="safetyMsg"></div>`;showModal('safetyModal');$('#reportUser').onclick=()=>reportUser(p,context);$('#blockUser').onclick=()=>blockUser(p)}
@@ -139,7 +186,7 @@ async function loadMessages(scroll=true){if(!activeMatch)return;const {data,erro
 async function sendMessage(){const input=$('#chatInput'),body=input.value.trim();if(!body)return;const b=$('#sendMessage');setBusy(b,true,'…');try{const {error}=await sb.from('messages').insert({match_id:activeMatch.id,sender_id:user.id,body});if(error)throw error;input.value='';await loadMessages(true)}catch(e){message('#chatMsg',e.message,'bad')}finally{setBusy(b,false)}}
 async function unmatchActive(){if(!confirm(`Unmatch ${activeMatch.other.display_name}?`))return;try{const {error}=await sb.rpc('unmatch',{match_uuid:activeMatch.id});if(error)throw error;closeModal('matchModal');await loadMatches()}catch(e){message('#chatMsg',e.message,'bad')}}
 
-async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);$('#myProfile').innerHTML=`<div class="panel"><div class="photo-grid">${m.photos.map(x=>`<div class="photo"><img src="${esc(x.url)}"></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`}
+async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);$('#myProfile').innerHTML=`<div class="panel"><div class="section-title"><div><span class="pill">YOUR PROFILE</span><h3 style="margin:7px 0 0">What people see</h3></div><button class="btn primary" id="previewMyProfile" type="button">Preview profile</button></div><div class="photo-grid vera-my-profile-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`;$('#previewMyProfile').onclick=previewMyProfileAsOthers}
 $('#editLiveProfile').onclick=async()=>{showScreen('onboardingScreen');await loadOnboarding()};
 
 async function loadSettings(){const {data,error}=await sb.from('user_settings').select('*').eq('user_id',user.id).single();if(error)throw error;$('#discoveryToggle').checked=data.discovery_enabled!==false}
