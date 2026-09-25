@@ -122,6 +122,15 @@ async function persistLegalAcceptance(u){
   if(error)throw error;
   localStorage.removeItem('veramor_pending_legal_acceptance');
 }
+async function resumePendingLegalAcceptance(){
+  const pending=localStorage.getItem('veramor_pending_legal_acceptance');
+  if(!pending)return;
+  try{
+    const {data:{session}}=await hardeningSb.auth.getSession();
+    if(session?.user)await persistLegalAcceptance(session.user);
+  }catch(e){console.warn('VERAMOR pending legal acceptance will retry',e)}
+}
+
 async function ensurePostLoginReady(){
   const {data:{session}}=await hardeningSb.auth.getSession();
   const u=session?.user;
@@ -383,6 +392,7 @@ function addEnterToSend(){
 
 window.addEventListener('load',()=>{
   getLaunchConfig(true).then(applyLaunchConfig).catch(()=>{});
+  resumePendingLegalAcceptance().catch(()=>{});
   ensureLegalSignupUi();
   installFriendBetaSignupBypass();
   addForgotPassword();
