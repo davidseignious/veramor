@@ -27,6 +27,7 @@
     panel.className='panel section';
     panel.id='publicLaunchControls';
     const publicOn=cfg?.public_launch===true,signups=cfg?.signup_open!==false,maintenance=cfg?.maintenance_mode===true;
+    const hostReady=cfg?.production_host_ready===true,legalReady=cfg?.public_legal_ready===true,billingLive=cfg?.billing_live===true;
     const openReports=Number(s.open_reports)||0,errors=Number(health.client_errors_24h)||0;
     panel.innerHTML='<span class="pill">PUBLIC LAUNCH CONTROL</span>'
       +'<h3 style="margin:8px 0 4px">'+(publicOn?'Public mode is ON':'Staged launch mode')+'</h3>'
@@ -36,11 +37,22 @@
       +'<div class="stat"><small>Client errors · 24h</small><b>'+errors+'</b></div>'
       +'<div class="stat"><small>Launch-ready profiles</small><b>'+(Number(s.ready_profiles)||0)+'</b></div>'
       +'<div class="stat"><small>Signups</small><b>'+(signups?'OPEN':'PAUSED')+'</b></div>'
+      +'<div class="stat"><small>Production host</small><b>'+(hostReady?'READY':'NOT READY')+'</b></div>'
+      +'<div class="stat"><small>Public legal</small><b>'+(legalReady?'SIGNED OFF':'PENDING')+'</b></div>'
+      +'<div class="stat"><small>Billing</small><b>'+(billingLive?'LIVE':'OFF')+'</b></div>'
       +'</div>'
-      +launchSwitch('public_launch','Public launch mode',publicOn,'Uses email-confirmed signup and removes Friend Beta labeling.',true)
+      +launchSwitch('production_host_ready','Production host confirmed',hostReady,'Only mark ready after the clean HTTPS production URL opens reliably on mobile and desktop.',false)
+      +launchSwitch('public_legal_ready','Public Terms & Privacy reviewed',legalReady,'Manual sign-off after the public Terms, Privacy Notice, and safety disclosures are reviewed.',false)
+      +launchSwitch('public_launch','Public launch mode',publicOn,'Uses email-confirmed signup, removes Friend Beta labeling, and hides AI demo profiles from real users.',true)
       +launchSwitch('signup_open','Allow new signups',signups,'Turn this off instantly if abuse, spam, or capacity becomes a problem.',false)
       +launchSwitch('maintenance_mode','Maintenance mode',maintenance,'Shows a full-screen maintenance notice to users while you work.',true)
-      +'<div class="notice '+(openReports===0&&errors===0?'success':'')+'"><strong>Launch gate:</strong> '+(openReports===0?'Safety queue clear.':'Resolve open safety reports before a larger rollout.')+' '+(errors===0?'No client errors recorded in the last 24 hours.':'Review client errors before increasing traffic.')+'</div>'
+      +'<div class="notice '+(openReports===0&&errors===0&&hostReady&&legalReady?'success':'')+'"><strong>Launch gate:</strong> '
+      +(hostReady?'Host confirmed. ':'Confirm the production host. ')
+      +(legalReady?'Legal sign-off recorded. ':'Public legal review still pending. ')
+      +(openReports===0?'Safety queue clear. ':'Resolve open safety reports. ')
+      +(errors===0?'No client errors recorded in the last 24 hours.':'Review client errors before increasing traffic.')
+      +(billingLive?' Paid checkout is live.':' Paid checkout remains off; public launch can still be free.')
+      +'</div>'
       +'<div id="launchControlMsg"></div>';
     $('#dash').appendChild(panel);
     panel.querySelectorAll('[data-launch-flag]').forEach(function(input){
