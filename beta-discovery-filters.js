@@ -95,4 +95,4 @@ async function saveFilters(){
 }
 function boot(){installFilters().catch(e=>console.error('filters',e))}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-filterSb.auth.onAuthStateChange(e=>{if(e==='SIGNED_IN'||e==='TOKEN_REFRESHED')setTimeout(()=>installFilters().then(loadFilters).catch(()=>{}),100)});
+filterSb.auth.onAuthStateChange(e=>{if(e==='SIGNED_IN')setTimeout(()=>installFilters().then(loadFilters).catch(()=>{}),100)});
