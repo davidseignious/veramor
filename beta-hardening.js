@@ -170,11 +170,17 @@ function installFriendBetaSignupBypass(){
 
   document.addEventListener('submit',async e=>{
     if(e.target!==form)return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
 
     const ageRow=document.getElementById('ageRow');
     const isSignup=!!ageRow&&!ageRow.classList.contains('hidden');
+
+    // Login is owned by beta.js and the main VERAMOR Supabase client.
+    // Only intercept signup here for the Friend Beta account-creation flow.
+    if(!isSignup)return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
     const email=(document.getElementById('authEmail')?.value||'').trim().toLowerCase();
     const password=document.getElementById('authPassword')?.value||'';
     const btn=document.getElementById('authSubmit');
