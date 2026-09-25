@@ -8,7 +8,7 @@ const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const screens=['authScreen','onboardingScreen','waitingScreen','appScreen'];
-let authMode='login',session=null,user=null,profile=null,launchStatus=null,photos=[],faceUrl=null,discovery=[],deckIndex=0,viewMode='single',matches=[],activeMatch=null,chatTimer=null,lastPassedId=null;
+let authMode='login',session=null,user=null,profile=null,launchStatus=null,photos=[],faceUrl=null,discovery=[],deckIndex=0,viewMode='single',matches=[],activeMatch=null,chatTimer=null,chatChannel=null,planCache=null,lastPassedId=null;
 
 function showScreen(id){screens.forEach(x=>$('#'+x).classList.toggle('hidden',x!==id));$('#topSignOut').classList.toggle('hidden',id==='authScreen');$('#bottomNav').classList.toggle('hidden',id!=='appScreen');window.scrollTo({top:0,behavior:'smooth'})}
 function message(sel,text,type=''){const el=$(sel);if(!el)return;el.innerHTML=text?`<div class="notice ${type}">${esc(text)}</div>`:''}
@@ -417,12 +417,71 @@ function renderMatches(){const root=$('#matchesList');if(!matches.length){root.i
 async function openMatch(m){activeMatch=m;$('#matchModalTitle').textContent=m.other.display_name;showModal('matchModal');await renderMatchState()}
 async function renderMatchState(){const m=activeMatch;if(!m)return;if(!myChemDone(m)){$('#matchModalBody').innerHTML=`<span class="pill">CHEMISTRY CHECK</span><h2>One question</h2><p>Say one thing you noticed about ${esc(m.other.display_name)}’s profile.</p><p class="muted">Take as long as you need. This is the only Chemistry Check question.</p><div class="field"><textarea id="chemAnswer" maxlength="500" placeholder="Write your answer…"></textarea></div><button class="btn primary full" id="submitChem">Continue</button><div id="chemMsg"></div>`;$('#submitChem').onclick=submitChemistry;return}if(!otherChemDone(m)){$('#matchModalBody').innerHTML=`<div class="hero"><span class="pill ok">YOUR ANSWER IS IN</span><h2>Waiting on ${esc(m.other.display_name)}</h2><p>As soon as they answer their one Chemistry Check question, messaging unlocks for both of you.</p><button class="btn" id="checkChem">Check again</button></div>`;$('#checkChem').onclick=async()=>{await loadMatches();activeMatch=matches.find(x=>x.id===m.id)||m;await renderMatchState()};return}await renderChat()}
 async function submitChemistry(){const answer=$('#chemAnswer').value.trim();if(!answer)return message('#chemMsg','Answer the one question to continue.','warn');const b=$('#submitChem');setBusy(b,true,'Submitting…');try{const {error}=await sb.rpc('submit_chemistry_answer',{match_uuid:activeMatch.id,answer});if(error)throw error;await loadMatches();activeMatch=matches.find(x=>x.id===activeMatch.id)||activeMatch;await renderMatchState()}catch(e){message('#chemMsg',e.message,'bad')}finally{setBusy(b,false)}}
-function hasPaidReadReceipts(){const plan=String(profile?.plan||'free').toLowerCase();return plan!=='free'&&plan!=='beta'}
+
+async function refreshMyPlan(force=false){
+  if(planCache&&!force)return planCache;
+  try{
+    const {data,error}=await sb.rpc('get_my_plan');
+    if(error)throw error;
+    planCache=String(data||'free').toLowerCase();
+  }catch(_e){planCache='free'}
+  return planCache;
+}
+function hasPaidReadReceipts(){return planCache==='plus'||planCache==='premium'}
 function openReadReceiptUpgrade(){closeModal('matchModal');showView('settingsView');setTimeout(()=>document.getElementById('veramorBilling')?.scrollIntoView({behavior:'smooth',block:'start'}),250)}
-async function renderChat(){clearInterval(chatTimer);const paidReceipts=hasPaidReadReceipts();$('#matchModalBody').innerHTML=`<div class="notice ok">✓ Both Chemistry Checks complete · messaging unlocked</div><div class="vera-read-receipt-status ${paidReceipts?'unlocked':'locked'}">${paidReceipts?'<span>✓ Read receipts enabled</span>':'<span>🔒 Read receipts</span><button class="btn" id="upgradeReadReceipts" type="button">Unlock with a paid plan</button>'}</div><div class="chat" id="chatMessages"></div><div class="compose"><input class="input" id="chatInput" maxlength="2000" placeholder="Message ${esc(activeMatch.other.display_name)}…"><button class="btn primary" id="sendMessage">Send</button></div><div class="actions" style="margin-top:12px"><button class="btn" id="chatSafety">Block / report</button><button class="btn danger" id="unmatchBtn">Unmatch</button></div><div id="chatMsg"></div>`;$('#sendMessage').onclick=sendMessage;$('#chatInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sendMessage()}};$('#upgradeReadReceipts')?.addEventListener('click',openReadReceiptUpgrade);$('#chatSafety').onclick=()=>openSafety(activeMatch.other,{surface:'conversation',match_id:activeMatch.id});$('#unmatchBtn').onclick=unmatchActive;await loadMessages();chatTimer=setInterval(()=>{if(!$('#matchModal').classList.contains('hidden'))loadMessages(false).catch(()=>{});else clearInterval(chatTimer)},5000)}
-async function loadMessages(scroll=true){if(!activeMatch)return;const {data,error}=await sb.from('messages').select('*').eq('match_id',activeMatch.id).order('created_at',{ascending:true});if(error)throw error;const root=$('#chatMessages');if(!root)return;const canSeeRead=hasPaidReadReceipts();root.innerHTML=(data||[]).map(x=>`<div class="msg ${x.sender_id===user.id?'me':''}" data-message-id="${esc(x.id)}">${esc(x.body)}${canSeeRead&&x.sender_id===user.id&&x.read_at?'<div class="vera-seen-receipt">Seen</div>':''}${x.sender_id!==user.id?`<button class="msg-report" type="button" data-report-message="${esc(x.id)}">Report message</button>`:''}</div>`).join('');$('[data-report-message]').forEach(b=>b.onclick=()=>{const row=(data||[]).find(x=>x.id===b.dataset.reportMessage);if(row)openSafety(activeMatch.other,{surface:'message',match_id:activeMatch.id,message_id:row.id,message_excerpt:row.body})});await sb.rpc('mark_match_messages_read',{p_match:activeMatch.id});if(scroll)root.scrollTop=root.scrollHeight}
-async function sendMessage(){const input=$('#chatInput'),body=input.value.trim();if(!body)return;const b=$('#sendMessage');setBusy(b,true,'…');try{const {error}=await sb.from('messages').insert({match_id:activeMatch.id,sender_id:user.id,body});if(error)throw error;input.value='';await loadMessages(true)}catch(e){message('#chatMsg',e.message,'bad')}finally{setBusy(b,false)}}
-async function unmatchActive(){if(!confirm(`Unmatch ${activeMatch.other.display_name}?`))return;try{const {error}=await sb.rpc('unmatch',{match_uuid:activeMatch.id});if(error)throw error;closeModal('matchModal');await loadMatches()}catch(e){message('#chatMsg',e.message,'bad')}}
+function stopChatRealtime(){
+  clearInterval(chatTimer);chatTimer=null;
+  if(chatChannel){try{sb.removeChannel(chatChannel)}catch(_e){}chatChannel=null}
+}
+function subscribeChatRealtime(){
+  if(!activeMatch?.id||!user?.id)return;
+  if(chatChannel){try{sb.removeChannel(chatChannel)}catch(_e){}}
+  const matchId=activeMatch.id;
+  chatChannel=sb.channel(`vera-chat-${matchId}-${user.id}`)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`match_id=eq.${matchId}`},()=>loadMessages(false).catch(()=>{}))
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:`match_id=eq.${matchId}`},()=>loadMessages(false).catch(()=>{}))
+    .subscribe();
+}
+async function renderChat(){
+  stopChatRealtime();
+  await refreshMyPlan(true);
+  const paidReceipts=hasPaidReadReceipts();
+  $('#matchModalBody').innerHTML=`<div class="notice ok">✓ Both Chemistry Checks complete · messaging unlocked</div><div class="vera-read-receipt-status ${paidReceipts?'unlocked':'locked'}">${paidReceipts?'<span>✓ Read receipts enabled</span>':'<span>🔒 Read receipts</span><button class="btn" id="upgradeReadReceipts" type="button">Unlock with a paid plan</button>'}</div><div class="chat" id="chatMessages"></div><div class="compose"><input class="input" id="chatInput" maxlength="2000" placeholder="Message ${esc(activeMatch.other.display_name)}…"><button class="btn primary" id="sendMessage">Send</button></div><div class="actions" style="margin-top:12px"><button class="btn" id="chatSafety">Block / report</button><button class="btn danger" id="unmatchBtn">Unmatch</button></div><div id="chatMsg"></div>`;
+  $('#sendMessage').onclick=sendMessage;
+  $('#chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};
+  $('#upgradeReadReceipts')?.addEventListener('click',openReadReceiptUpgrade);
+  $('#chatSafety').onclick=()=>openSafety(activeMatch.other,{surface:'conversation',match_id:activeMatch.id});
+  $('#unmatchBtn').onclick=unmatchActive;
+  await loadMessages();
+  subscribeChatRealtime();
+  chatTimer=setInterval(()=>{if(!$('#matchModal').classList.contains('hidden'))loadMessages(false).catch(()=>{});else stopChatRealtime()},15000);
+}
+async function loadMessages(scroll=true){
+  if(!activeMatch)return;
+  const matchId=activeMatch.id;
+  const {data,error}=await sb.from('messages').select('*').eq('match_id',matchId).order('created_at',{ascending:true});
+  if(error)throw error;
+  if(!activeMatch||activeMatch.id!==matchId)return;
+  const root=$('#chatMessages');if(!root)return;
+  const canSeeRead=hasPaidReadReceipts();
+  root.innerHTML=(data||[]).map(x=>`<div class="msg ${x.sender_id===user.id?'me':''}" data-message-id="${esc(x.id)}">${esc(x.body)}${canSeeRead&&x.sender_id===user.id?`<div class="vera-seen-receipt">${x.read_at?'Seen':'Sent'}</div>`:''}${x.sender_id!==user.id?`<button class="msg-report" type="button" data-report-message="${esc(x.id)}">Report message</button>`:''}</div>`).join('');
+  $$('[data-report-message]').forEach(b=>b.onclick=()=>{const row=(data||[]).find(x=>x.id===b.dataset.reportMessage);if(row)openSafety(activeMatch.other,{surface:'message',match_id:activeMatch.id,message_id:row.id,message_excerpt:row.body})});
+  const {error:readError}=await sb.rpc('mark_match_messages_read',{p_match:matchId});
+  if(readError)console.warn('VERAMOR mark read failed',readError);
+  if(scroll)root.scrollTop=root.scrollHeight;
+}
+async function sendMessage(){
+  const input=$('#chatInput'),body=input.value.trim();if(!body)return;
+  const b=$('#sendMessage');setBusy(b,true,'…');
+  try{
+    const {error}=await sb.from('messages').insert({match_id:activeMatch.id,sender_id:user.id,body});
+    if(error)throw error;
+    input.value='';
+    await loadMessages(true);
+  }catch(e){message('#chatMsg',e.message,'bad')}finally{setBusy(b,false)}
+}
+async function unmatchActive(){if(!confirm(`Unmatch ${activeMatch.other.display_name}?`))return;try{const {error}=await sb.rpc('unmatch',{match_uuid:activeMatch.id});if(error)throw error;stopChatRealtime();closeModal('matchModal');await loadMatches()}catch(e){message('#chatMsg',e.message,'bad')}}
+
 
 async function renderMyProfile(){await fetchMe();const m=await mediaForProfile(profile);const status=launchStatus||{};const statusCard=status.launch_ready?`<div class="vera-profile-status ready"><strong>✓ Discoverable</strong><span>Your profile is live for eligible people.</span></div>`:`<div class="vera-profile-status"><strong>${Number(status.photos_remaining||0)>0?Number(status.photos_remaining)+' photo'+(Number(status.photos_remaining)===1?'':'s')+' needed':'Profile needs attention'}</strong><span>${Number(status.photos_remaining||0)>0?'Add the remaining required photo to return to discovery.':'Finish the remaining profile requirements.'}</span></div>`;$('#myProfile').innerHTML=`<div class="panel">${statusCard}<div class="section-title"><div><span class="pill">YOUR PROFILE</span><h3 style="margin:7px 0 0">What people see</h3></div><button class="btn primary" id="previewMyProfile" type="button">👁 View as others</button></div><div class="photo-grid vera-my-profile-grid">${m.photos.map((x,i)=>`<div class="photo"><img src="${esc(x.url)}" alt="Profile photo ${i+1}"><span class="vera-photo-order-badge">${i+1}</span></div>`).join('')}</div><h2>${esc(profile.display_name)}${formatAge(profile)?`, ${formatAge(profile)}`:''}</h2><p class="muted">${esc(profile.occupation||'')}${profile.city?` · ${esc(profile.city)}`:''}</p><p>${esc(profile.bio||'')}</p><div class="tags">${(profile.interests||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>${lifestyleHtml(profile)}${m.video?`<video src="${esc(m.video)}" controls playsinline style="width:100%;border-radius:16px;margin-top:10px"></video>`:''}</div>`;let host=document.getElementById('selfPreviewHost');if(!host){host=document.createElement('section');host.id='selfPreviewHost';host.className='vera-self-preview-host';$('#myProfile').insertAdjacentElement('afterend',host)}$('#previewMyProfile').onclick=previewMyProfileAsOthers}
 $('#editLiveProfile').onclick=openProfileEditor;
@@ -448,9 +507,9 @@ function showView(id){
 }
 window.VERAMOR_SHOW_VIEW=showView;
 $$('#bottomNav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#refreshDiscovery').onclick=()=>loadDiscovery().catch(e=>alert(e.message));$('#undoPass').onclick=undoLastPass;$('#refreshMatches').onclick=()=>loadMatches().catch(e=>alert(e.message));
-function showModal(id){$('#'+id).classList.remove('hidden')}function closeModal(id){$('#'+id).classList.add('hidden');if(id==='matchModal'){clearInterval(chatTimer);activeMatch=null}}$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id)}));
+function showModal(id){$('#'+id).classList.remove('hidden')}function closeModal(id){$('#'+id).classList.add('hidden');if(id==='matchModal'){stopChatRealtime();activeMatch=null}}$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id)}));
 
-async function signOut(){clearInterval(chatTimer);await sb.auth.signOut();session=null;user=null;profile=null;launchStatus=null;showScreen('authScreen')}
+async function signOut(){stopChatRealtime();planCache=null;await sb.auth.signOut();session=null;user=null;profile=null;launchStatus=null;showScreen('authScreen')}
 $('#topSignOut').onclick=signOut;
 
 sb.auth.onAuthStateChange((event,s)=>{session=s;user=s?.user||null;if(event==='SIGNED_OUT'){showScreen('authScreen')}});
