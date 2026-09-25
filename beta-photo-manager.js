@@ -69,15 +69,28 @@ async function loadPhotoManager(){
 }
 
 function managerHost(){
-  const view=document.getElementById('profileView');
+  const profileView=document.getElementById('profileView');
+  const onboarding=document.getElementById('onboardingScreen');
+  const editing=!!(onboarding&&!onboarding.classList.contains('hidden'));
+  const view=editing?onboarding:profileView;
   if(!view)return null;
+
   let panel=document.getElementById('veraPhotoManager');
-  if(panel)return panel;
-  panel=document.createElement('section');
-  panel.id='veraPhotoManager';
-  panel.className='panel vera-photo-manager';
-  const edit=document.getElementById('editLiveProfile');
-  edit?.insertAdjacentElement('beforebegin',panel);
+  if(!panel){
+    panel=document.createElement('section');
+    panel.id='veraPhotoManager';
+    panel.className='panel vera-photo-manager';
+  }
+
+  if(editing){
+    const anchor=document.getElementById('photoMsg')||document.getElementById('photoGrid')||document.getElementById('uploadPhotos');
+    if(anchor)anchor.insertAdjacentElement('afterend',panel);
+    else view.appendChild(panel);
+  }else{
+    const edit=document.getElementById('editLiveProfile');
+    if(edit)edit.insertAdjacentElement('beforebegin',panel);
+    else view.appendChild(panel);
+  }
   return panel;
 }
 
@@ -260,12 +273,25 @@ async function addPhotosEasy(files){
 }
 
 function bootPhotoManager(){
-  document.querySelector('#bottomNav button[data-view="profileView"]')?.addEventListener('click',()=>setTimeout(()=>loadPhotoManager().catch(e=>pmMessage(e.message||'Could not load profile photos.','bad')),80));
+  const schedule=(delay=80)=>setTimeout(()=>loadPhotoManager().catch(e=>pmMessage(e.message||'Could not load profile photos.','bad')),delay);
+
+  document.querySelector('#bottomNav button[data-view="profileView"]')?.addEventListener('click',()=>schedule());
+  document.getElementById('editLiveProfile')?.addEventListener('click',()=>schedule(180));
+  document.getElementById('editProfile')?.addEventListener('click',()=>schedule(180));
+
   window.addEventListener('veramor:view-change',e=>{
-    if(e.detail?.view==='profileView')setTimeout(()=>loadPhotoManager().catch(err=>pmMessage(err.message||'Could not load profile photos.','bad')),80);
+    if(e.detail?.view==='profileView')schedule();
   });
+
+  const onboarding=document.getElementById('onboardingScreen');
+  if(onboarding){
+    new MutationObserver(()=>{
+      if(!onboarding.classList.contains('hidden'))schedule(120);
+    }).observe(onboarding,{attributes:true,attributeFilter:['class']});
+  }
+
   const profile=document.getElementById('profileView');
-  if(profile&&!profile.classList.contains('hidden'))loadPhotoManager().catch(()=>{});
+  if((profile&&!profile.classList.contains('hidden'))||(onboarding&&!onboarding.classList.contains('hidden')))schedule(20);
 }
 
 window.addEventListener('veramor:photos-changed',()=>setTimeout(()=>loadPhotoManager().catch(()=>{}),160));
