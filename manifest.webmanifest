@@ -1,1 +1,43 @@
-{"name":"VERAMOR","short_name":"VERAMOR","description":"Dating with more signal.","start_url":"/","display":"standalone","background_color":"#09080d","theme_color":"#09080d","icons":[{"src":"/veramor-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "VERAMOR",
+  "short_name": "VERAMOR",
+  "description": "Dating with more signal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09080d",
+  "theme_color": "#09080d",
+  "icons": [
+    {
+      "src": "/veramor-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "/",
+  "scope": "/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "categories": [
+    "social",
+    "lifestyle"
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Open VERAMOR",
+      "short_name": "Open",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/veramor-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
