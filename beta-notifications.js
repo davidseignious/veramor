@@ -3,11 +3,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const notifySb=createClient(
   'https://rfcoworvfqcqallgpozn.supabase.co',
   'sb_publishable_Sa1IwBa9gr7NylS_EMjpnA_5j1HT5LF',
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+  {auth:{persistSession:true,autoRefreshToken:false,detectSessionInUrl:true}}
 );
 
 let notifyUser=null;
 let notifyTimer=null;
+let notifyRefreshPromise=null;
+let notifyStartedFor=null;
 let notifyRows=[];
 let browserSeen=new Set(JSON.parse(sessionStorage.getItem('veramor_browser_notified')||'[]'));
 
@@ -166,6 +168,8 @@ async function requestBrowserNotifications(){
 }
 
 async function refreshNotifications(browserAlerts=true){
+  if(notifyRefreshPromise)return notifyRefreshPromise;
+  notifyRefreshPromise=(async()=>{
   const s=await currentSession();if(!s?.user)return;
   try{await notifySb.rpc('refresh_notifications')}catch(_e){}
   const {data,error}=await notifySb.from('notifications').select('id,category,title,body,emoji,action,related_id,deliver_at,read_at,created_at').order('deliver_at',{ascending:false}).limit(50);
@@ -182,6 +186,8 @@ async function refreshNotifications(browserAlerts=true){
     fresh.forEach(n=>{try{new Notification(`${n.emoji||'♥'} ${n.title}`,{body:n.body,tag:`veramor-${n.id}`})}catch(_e){}browserSeen.add(n.id)});
     sessionStorage.setItem('veramor_browser_notified',JSON.stringify([...browserSeen].slice(-100)));
   }
+  })();
+  try{return await notifyRefreshPromise}finally{notifyRefreshPromise=null}
 }
 
 function renderNotificationFeed(){
@@ -229,15 +235,19 @@ async function openNotifications(){
   await refreshNotifications(false).catch(e=>{const r=document.getElementById('notificationFeed');if(r)r.innerHTML=`<div class="notice bad">${nEsc(e.message||'Could not load notifications.')}</div>`});
 }
 
-function startNotifications(){
-  clearInterval(notifyTimer);
-  currentSession().then(s=>{if(!s?.user)return;recordVisit().catch(()=>{});refreshNotifications(false).catch(()=>{});notifyTimer=setInterval(()=>refreshNotifications(true).catch(()=>{}),15000)});
+async function startNotifications(){
+  const s=await currentSession();if(!s?.user)return;
+  if(notifyStartedFor===s.user.id&&notifyTimer)return;
+  clearInterval(notifyTimer);notifyStartedFor=s.user.id;
+  recordVisit().catch(()=>{});
+  refreshNotifications(false).catch(()=>{});
+  notifyTimer=setInterval(()=>refreshNotifications(true).catch(()=>{}),60000);
 }
 
 window.addEventListener('load',()=>{installNotificationUI();startNotifications()});
 notifySb.auth.onAuthStateChange((event,session)=>{
   notifyUser=session?.user||null;
   document.getElementById('notificationBell')?.classList.toggle('hidden',!notifyUser);
-  if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')startNotifications();
-  if(event==='SIGNED_OUT'){clearInterval(notifyTimer);notifyRows=[];document.getElementById('notificationBell')?.classList.add('hidden');document.getElementById('notificationDrawer')?.classList.add('hidden')}
+  if(event==='SIGNED_IN')startNotifications();
+  if(event==='SIGNED_OUT'){clearInterval(notifyTimer);notifyTimer=null;notifyStartedFor=null;notifyRows=[];document.getElementById('notificationBell')?.classList.add('hidden');document.getElementById('notificationDrawer')?.classList.add('hidden')}
 });
