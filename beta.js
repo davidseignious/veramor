@@ -97,7 +97,7 @@ $('#authForm').onsubmit=async e=>{e.preventDefault();const btn=$('#authSubmit');
   const email=$('#authEmail').value.trim(),password=$('#authPassword').value;
   if(authMode==='signup'){
     if(!$('#ageConfirm').checked)throw new Error('Confirm that you are at least 18.');
-    const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;
+    const emailRedirectTo='https://veramor-ai-company4.vercel.app/beta.html';const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo}});if(error)throw error;
     if(!data.session){message('#authMsg','Account created. Check your email to confirm it, then return here to log in.','ok');return}
   }else{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
   const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUserWithRetry();
