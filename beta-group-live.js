@@ -16,6 +16,24 @@ const GROUP_DEFAULT_ICE=[
   {urls:'stun:stun.cloudflare.com:3478'}
 ];
 let groupIceCache=null;
+async function assertGroupZeroCostMode(){
+  let body;
+  try{
+    const r=await fetch('/api/ice',{cache:'no-store',headers:{accept:'application/json'}});
+    if(!r.ok)throw new Error('zero-cost config unavailable');
+    body=await r.json();
+  }catch(_e){
+    throw new Error('Group calling is disabled because VERAMOR could not verify $0 Direct Mode.');
+  }
+  const servers=Array.isArray(body?.iceServers)?body.iceServers:[];
+  const urls=servers.flatMap(s=>Array.isArray(s?.urls)?s.urls:[s?.urls]).filter(Boolean).map(String);
+  const hasRelay=urls.some(u=>/^turns?:/i.test(u));
+  if(body?.zeroCostMode!==true||body?.paidFallback!==false||body?.relayConfigured===true||hasRelay){
+    throw new Error('Group calling is locked because a paid relay/fallback is configured.');
+  }
+  return true;
+}
+
 async function groupIceServers(){
   if(groupIceCache)return groupIceCache;
   try{
@@ -128,6 +146,7 @@ async function openGroupPicker(){
 }
 async function startGroupCall(kind,invitees){
   if(groupState)return groupToast('You already have a group call open.','bad');
+  try{await assertGroupZeroCostMode()}catch(e){return groupToast(e.message,'bad')}
   let stream;
   try{stream=await groupGetMedia(kind)}catch(e){return groupToast(e.message,'bad')}
   try{
@@ -279,7 +298,7 @@ async function showGroupInvite(member){
   const d=document.createElement('div');d.id='veraGroupIncoming';d.className='vera-group-incoming';
   d.innerHTML=`<span class="pill">GROUP ${room.kind==='video'?'VIDEO':'VOICE'} CALL</span><h2>${groupEsc(host)} invited you</h2><p>Join the live group call?</p><div class="actions"><button class="btn danger" id="veraGroupDecline">Decline</button><button class="btn primary" id="veraGroupAccept">Join</button></div>`;document.body.appendChild(d);
   document.getElementById('veraGroupDecline').onclick=async()=>{try{await groupSb.rpc('respond_group_call',{p_room:room.id,p_accept:false})}catch(_e){}d.remove()};
-  document.getElementById('veraGroupAccept').onclick=async()=>{let stream;const b=document.getElementById('veraGroupAccept');b.disabled=true;b.textContent='Joining…';try{stream=await groupGetMedia(room.kind);const {error}=await groupSb.rpc('respond_group_call',{p_room:room.id,p_accept:true});if(error)throw error;d.remove();await openGroupRoom(room,stream)}catch(e){stream?.getTracks().forEach(t=>t.stop());groupToast(e.message||'Could not join group call.','bad');b.disabled=false;b.textContent='Join'}};
+  document.getElementById('veraGroupAccept').onclick=async()=>{let stream;const b=document.getElementById('veraGroupAccept');b.disabled=true;b.textContent='Joining…';try{await assertGroupZeroCostMode();stream=await groupGetMedia(room.kind);const {error}=await groupSb.rpc('respond_group_call',{p_room:room.id,p_accept:true});if(error)throw error;d.remove();await openGroupRoom(room,stream)}catch(e){stream?.getTracks().forEach(t=>t.stop());groupToast(e.message||'Could not join group call.','bad');b.disabled=false;b.textContent='Join'}};
 }
 async function installGroupInvites(){
   const u=await groupSessionUser();if(!u)return;
