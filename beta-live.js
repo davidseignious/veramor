@@ -18,6 +18,24 @@ const DEFAULT_ICE_SERVERS=[
   {urls:'stun:stun.cloudflare.com:3478'}
 ];
 let cachedIceServers=null;
+async function assertZeroCostLiveMode(){
+  let body;
+  try{
+    const r=await fetch('/api/ice',{cache:'no-store',headers:{accept:'application/json'}});
+    if(!r.ok)throw new Error('zero-cost config unavailable');
+    body=await r.json();
+  }catch(_e){
+    throw new Error('Live calling is disabled because VERAMOR could not verify $0 Direct Mode.');
+  }
+  const servers=Array.isArray(body?.iceServers)?body.iceServers:[];
+  const urls=servers.flatMap(s=>Array.isArray(s?.urls)?s.urls:[s?.urls]).filter(Boolean).map(String);
+  const hasRelay=urls.some(u=>/^turns?:/i.test(u));
+  if(body?.zeroCostMode!==true||body?.paidFallback!==false||body?.relayConfigured===true||hasRelay){
+    throw new Error('Live calling is locked because a paid relay/fallback is configured.');
+  }
+  return true;
+}
+
 async function getIceServers(){
   if(cachedIceServers)return cachedIceServers;
   try{
@@ -227,6 +245,7 @@ function bindCallControls(){
 async function startOutgoingCall(kind){
   if(callState)return liveToast('You already have a call open.','bad');
   const ctx=await resolveContext();if(!ctx)return liveToast('Open an active match first.','bad');
+  try{await assertZeroCostLiveMode()}catch(e){return liveToast(e.message,'bad')}
   let stream;try{stream=await getMedia(kind)}catch(e){return liveToast(e.message||'Camera or microphone permission was not granted.','bad')}
   try{
     const {data:row,error}=await liveSb.rpc('request_veramor_call',{p_match:ctx.match.id,p_kind:kind});if(error)throw error;
@@ -241,7 +260,7 @@ async function showIncomingCall(row){
   const name=await profileName(row.caller_id);const w=document.createElement('div');w.id='veraIncomingCall';w.className='vera-incoming';w.innerHTML=`<div class="vera-incoming-ring">${row.kind==='video'?'🎥':'📞'}</div><span class="pill">INCOMING ${row.kind==='video'?'VIDEO':'VOICE'} CALL</span><h2>${lEsc(name)}</h2><p>${row.kind==='video'?'Wants to video chat':'Wants to talk'}</p><div class="actions"><button class="btn danger" id="declineIncoming">Decline</button><button class="btn primary" id="acceptIncoming">Accept</button></div>`;document.body.appendChild(w);
   const dismiss=()=>w.remove();
   document.getElementById('declineIncoming').onclick=async()=>{try{await liveSb.rpc('respond_veramor_call',{p_call:row.id,p_accept:false})}catch(_e){}dismiss()};
-  document.getElementById('acceptIncoming').onclick=async()=>{let stream;const b=document.getElementById('acceptIncoming');b.disabled=true;b.textContent='Opening…';try{stream=await getMedia(row.kind);const {data:updated,error}=await liveSb.rpc('respond_veramor_call',{p_call:row.id,p_accept:true});if(error)throw error;dismiss();showLive(`${row.kind==='video'?'Video':'Voice'} call`,callMarkup(name,row.kind,'Connecting…'));callState={row:updated||row,stream};await buildPeer(updated||row,stream,false);bindCallControls();await subscribeCall(updated||row)}catch(e){stream?.getTracks().forEach(t=>t.stop());liveToast(e.message||'Could not accept call.','bad');b.disabled=false;b.textContent='Accept'}};
+  document.getElementById('acceptIncoming').onclick=async()=>{let stream;const b=document.getElementById('acceptIncoming');b.disabled=true;b.textContent='Opening…';try{await assertZeroCostLiveMode();stream=await getMedia(row.kind);const {data:updated,error}=await liveSb.rpc('respond_veramor_call',{p_call:row.id,p_accept:true});if(error)throw error;dismiss();showLive(`${row.kind==='video'?'Video':'Voice'} call`,callMarkup(name,row.kind,'Connecting…'));callState={row:updated||row,stream};await buildPeer(updated||row,stream,false);bindCallControls();await subscribeCall(updated||row)}catch(e){stream?.getTracks().forEach(t=>t.stop());liveToast(e.message||'Could not accept call.','bad');b.disabled=false;b.textContent='Accept'}};
   const ms=Math.max(0,new Date(row.expires_at).getTime()-Date.now());setTimeout(()=>{if(document.body.contains(w))dismiss()},Math.min(ms+500,65000));
 }
 async function endCurrentCall(endServer){
