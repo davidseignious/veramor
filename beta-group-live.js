@@ -140,7 +140,7 @@ async function startGroupCall(kind,invitees){
   }
 }
 function groupRoomMarkup(kind){
-  return `<div><p id="veraGroupStatus" class="muted">Connecting group…</p><div id="veraGroupGrid" class="vera-group-grid"></div><div class="vera-group-controls"><button class="vera-round" id="veraGroupMute">🎙️</button>${kind==='video'?'<button class="vera-round" id="veraGroupCamera">📷</button>':''}<button class="vera-round danger" id="veraGroupHangup">✕</button></div><div class="notice">Group calls are live and are not recorded by VERAMOR. Up to 6 people total.</div></div>`;
+  return `<div><p id="veraGroupStatus" class="muted">Connecting group…</p><div id="veraGroupGrid" class="vera-group-grid"></div><div class="vera-group-controls"><button class="vera-round" id="veraGroupMute">🎙️</button>${kind==='video'?'<button class="vera-round" id="veraGroupCamera">📷</button>':''}<button class="vera-round danger" id="veraGroupHangup">✕</button></div><div class="notice">Group calls are live and are not recorded by VERAMOR. Up to 6 people total.</div><div class="notice ok"><strong>$0 Direct Mode</strong> · Group media is peer-to-peer only. No paid relay fallback is allowed.</div></div>`;
 }
 async function openGroupRoom(room,stream){
   if(groupState)await leaveGroupCall(false);
@@ -190,7 +190,16 @@ async function ensureGroupPeer(remoteId,initiate=false){
   pc.onconnectionstatechange=()=>{
     if(!groupState)return;
     if(pc.connectionState==='connected')document.getElementById('veraGroupStatus').textContent='Group connected';
-    if(pc.connectionState==='failed'&&groupUser.id.localeCompare(remoteId)<0)restartGroupPeer(remoteId).catch(()=>{});
+    if(pc.connectionState==='failed'&&groupUser.id.localeCompare(remoteId)<0){
+      restartGroupPeer(remoteId).catch(()=>{});
+      setTimeout(()=>{
+        if(groupState&&pc.connectionState==='failed'){
+          const n=groupState.names.get(remoteId)||'a participant';
+          const s=document.getElementById('veraGroupStatus');
+          if(s)s.textContent='$0 Direct Mode could not connect to '+n+'. Try switching networks and rejoin.';
+        }
+      },4200);
+    }
   };
   if(initiate){
     const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendGroupSignal(remoteId,'offer',offer.toJSON());
