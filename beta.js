@@ -99,7 +99,7 @@ $('#forgotPassword').onclick=async()=>{
   if(!email)return message('#authMsg','Enter your email first, then tap Forgot password.','warn');
   const btn=$('#forgotPassword');setBusy(btn,true,'Sending…');message('#authMsg','');
   try{
-    const redirectTo=window.location.origin+'/';
+    const redirectTo='https://veramor.vercel.app/';
     const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
     if(error)throw error;
     message('#authMsg','Password reset email sent. Open it on this device, then choose a new password.','ok');
@@ -128,7 +128,7 @@ $('#authForm').onsubmit=async e=>{e.preventDefault();const btn=$('#authSubmit');
   const email=$('#authEmail').value.trim(),password=$('#authPassword').value;
   if(authMode==='signup'){
     if(!$('#ageConfirm').checked)throw new Error('Confirm that you are at least 18.');
-    const emailRedirectTo=window.location.origin+'/';const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo}});if(error)throw error;
+    const emailRedirectTo='https://veramor.vercel.app/';const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo}});if(error)throw error;
     if(!data.session){message('#authMsg','Account created. Check your email to confirm it, then return here to log in.','ok');return}
   }else{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
   const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUserWithRetry();
