@@ -93,15 +93,50 @@ async function routeUser(){
 
 function setAuthMode(mode){authMode=mode;const signup=mode==='signup';$('#ageRow').classList.toggle('hidden',!signup);$('#authSubmit').textContent=signup?'Create account':'Log in';$('#authPassword').setAttribute('autocomplete',signup?'new-password':'current-password');$('#showLogin').classList.toggle('primary',!signup);$('#showSignup').classList.toggle('primary',signup);message('#authMsg','')}
 $('#showLogin').onclick=()=>setAuthMode('login');$('#showSignup').onclick=()=>setAuthMode('signup');
+
+$('#forgotPassword').onclick=async()=>{
+  const email=$('#authEmail').value.trim();
+  if(!email)return message('#authMsg','Enter your email first, then tap Forgot password.','warn');
+  const btn=$('#forgotPassword');setBusy(btn,true,'Sending…');message('#authMsg','');
+  try{
+    const redirectTo=window.location.origin+'/';
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
+    if(error)throw error;
+    message('#authMsg','Password reset email sent. Open it on this device, then choose a new password.','ok');
+  }catch(e){message('#authMsg',e.message||'Could not send password reset email.','bad')}
+  finally{setBusy(btn,false)}
+};
+
+$('#saveRecoveredPassword').onclick=async()=>{
+  const password=$('#recoveryPassword').value;
+  const confirmPassword=$('#recoveryPasswordConfirm').value;
+  if(password.length<8)return message('#authMsg','New password must be at least 8 characters.','bad');
+  if(password!==confirmPassword)return message('#authMsg','The new passwords do not match.','bad');
+  const btn=$('#saveRecoveredPassword');setBusy(btn,true,'Saving…');message('#authMsg','');
+  try{
+    const {error}=await sb.auth.updateUser({password});
+    if(error)throw error;
+    $('#recoveryPanel').classList.add('hidden');
+    message('#authMsg','Password changed. Loading your VERAMOR account…','ok');
+    const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;
+    if(user)await routeUserWithRetry();
+  }catch(e){message('#authMsg',e.message||'Could not change password.','bad')}
+  finally{setBusy(btn,false)}
+};
+
 $('#authForm').onsubmit=async e=>{e.preventDefault();const btn=$('#authSubmit');setBusy(btn,true,authMode==='signup'?'Creating…':'Logging in…');message('#authMsg','');try{
   const email=$('#authEmail').value.trim(),password=$('#authPassword').value;
   if(authMode==='signup'){
     if(!$('#ageConfirm').checked)throw new Error('Confirm that you are at least 18.');
-    const emailRedirectTo='https://veramor-ai-company4.vercel.app/beta.html';const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo}});if(error)throw error;
+    const emailRedirectTo=window.location.origin+'/';const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo}});if(error)throw error;
     if(!data.session){message('#authMsg','Account created. Check your email to confirm it, then return here to log in.','ok');return}
   }else{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
   const {data:{session:s}}=await sb.auth.getSession();session=s;user=s?.user||null;if(user)await routeUserWithRetry();
-}catch(err){message('#authMsg',err.message||'Could not continue.','bad')}finally{setBusy(btn,false)}};
+}catch(err){
+  const msg=String(err?.message||'');
+  if(authMode==='login'&&/invalid login credentials/i.test(msg))message('#authMsg','Incorrect email or password. If the account is confirmed, use Forgot password to set a new password.','bad');
+  else message('#authMsg',msg||'Could not continue.','bad')
+}finally{setBusy(btn,false)}};
 
 async function loadOnboarding(){
   await fetchMe();
@@ -529,7 +564,16 @@ function showModal(id){$('#'+id).classList.remove('hidden')}function closeModal(
 async function signOut(){stopChatRealtime();planCache=null;await sb.auth.signOut();session=null;user=null;profile=null;launchStatus=null;showScreen('authScreen')}
 $('#topSignOut').onclick=signOut;
 
-sb.auth.onAuthStateChange((event,s)=>{session=s;user=s?.user||null;if(event==='SIGNED_OUT'){showScreen('authScreen')}});
+sb.auth.onAuthStateChange((event,s)=>{
+  session=s;user=s?.user||null;
+  if(event==='SIGNED_OUT'){showScreen('authScreen');$('#recoveryPanel')?.classList.add('hidden');return}
+  if(event==='PASSWORD_RECOVERY'){
+    showScreen('authScreen');
+    setAuthMode('login');
+    $('#recoveryPanel')?.classList.remove('hidden');
+    message('#authMsg','Reset link verified. Choose a new password below.','ok');
+  }
+});
 
 let routeInFlight=null;
 async function routeUserWithRetry(){
