@@ -94,10 +94,10 @@ function hideLive(){document.getElementById('veraLiveModal')?.classList.add('hid
 
 function installSettings(){
   const host=document.getElementById('settingsView');if(!host||document.getElementById('livePrivacySettings'))return;
-  const p=document.createElement('div');p.id='livePrivacySettings';p.className='panel';p.innerHTML=`<div class="section-title"><div><span class="pill">LIVE</span><h3 style="margin:7px 0 0">Calls & Watch Together</h3></div><span style="font-size:25px">◉</span></div>
-    <p class="muted">Calls only work with active matches after both Chemistry Checks. You always choose whether to accept.</p>
+  const p=document.createElement('div');p.id='livePrivacySettings';p.className='panel';p.innerHTML=`<div class="section-title"><div><span class="pill">LIVE</span><h3 style="margin:7px 0 0">Calls, Watch & Listen Together</h3></div><span style="font-size:25px">◉</span></div>
+    <p class="muted">Calls only work with active matches after both Chemistry Checks. You always choose whether to accept.</p><div class="notice ok"><strong>$0 Direct Mode</strong> · Voice/video/group media stays peer-to-peer. VERAMOR never switches a failed call to a paid relay.</div>
     <label class="vera-live-setting"><span><strong>Allow voice & video call requests</strong><small>You can still decline any call.</small></span><input id="callsEnabled" type="checkbox" checked></label>
-    <label class="vera-live-setting"><span><strong>Allow Watch Together invites</strong><small>YouTube sync + movie-night countdown.</small></span><input id="watchEnabled" type="checkbox" checked></label>
+    <label class="vera-live-setting"><span><strong>Allow Watch / Listen Together invites</strong><small>YouTube sync plus countdown sync for video and music services.</small></span><input id="watchEnabled" type="checkbox" checked></label>
     <button class="btn full" id="saveLiveSettings">Save live settings</button><div id="liveSettingsMsg"></div>`;
   const danger=host.querySelector('.danger-zone');if(danger)host.insertBefore(p,danger);else host.appendChild(p);
   document.getElementById('saveLiveSettings').onclick=saveLiveSettings;
@@ -170,7 +170,7 @@ async function buildPeer(row,stream,isCaller){
       callState.reconnectTimer=setTimeout(()=>restartCallIce().catch(()=>{}),1800);
     }else if(pc.connectionState==='failed'){
       setCallStatus('Reconnecting…');
-      restartCallIce().catch(()=>setCallStatus('Connection failed. End the call and try again.'));
+      restartCallIce().catch(()=>setCallStatus('$0 Direct Mode could not make a peer-to-peer connection on this network. Try Wi-Fi/cellular switching or call again.'));
     }
   };
   callState={...(callState||{}),row,pc,stream,remoteStream,isCaller,pendingIce:[],processed:new Set(),restarting:false};
