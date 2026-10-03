@@ -13,6 +13,48 @@ let incomingChannel=null;
 let watchInviteChannel=null;
 let watchState=null;
 
+const DEFAULT_ICE_SERVERS=[
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']},
+  {urls:'stun:stun.cloudflare.com:3478'}
+];
+let cachedIceServers=null;
+async function getIceServers(){
+  if(cachedIceServers)return cachedIceServers;
+  try{
+    const r=await fetch('/api/ice',{cache:'no-store',headers:{accept:'application/json'}});
+    if(r.ok){
+      const body=await r.json();
+      if(Array.isArray(body?.iceServers)&&body.iceServers.length){
+        cachedIceServers=[...body.iceServers,...DEFAULT_ICE_SERVERS];
+        return cachedIceServers;
+      }
+    }
+  }catch(_e){}
+  cachedIceServers=DEFAULT_ICE_SERVERS;
+  return cachedIceServers;
+}
+function mediaKindFromUrl(raw){
+  try{
+    const h=new URL(raw).hostname.toLowerCase().replace(/^www\./,'');
+    return (h==='open.spotify.com'||h==='music.apple.com')?'music':'video';
+  }catch(_e){return 'video'}
+}
+function serviceNameFromUrl(raw){
+  try{
+    const h=new URL(raw).hostname.toLowerCase().replace(/^www\./,'');
+    const names={
+      'open.spotify.com':'Spotify','music.apple.com':'Apple Music','netflix.com':'Netflix',
+      'max.com':'Max','play.max.com':'Max','hulu.com':'Hulu','disneyplus.com':'Disney+',
+      'primevideo.com':'Prime Video','amazon.com':'Prime Video','peacocktv.com':'Peacock',
+      'paramountplus.com':'Paramount+','tubitv.com':'Tubi','pluto.tv':'Pluto TV',
+      'tv.apple.com':'Apple TV','crunchyroll.com':'Crunchyroll','discoveryplus.com':'Discovery+',
+      'starz.com':'STARZ','amcplus.com':'AMC+','britbox.com':'BritBox','mubi.com':'MUBI',
+      'criterionchannel.com':'Criterion Channel','plex.tv':'Plex','vimeo.com':'Vimeo'
+    };
+    return names[h]||h;
+  }catch(_e){return 'streaming service'}
+}
+
 const lEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function liveToast(text,type=''){
@@ -75,7 +117,16 @@ function installChatTools(){
 
 async function getMedia(kind){
   if(!navigator.mediaDevices?.getUserMedia)throw new Error('Calls are not supported by this browser.');
-  return navigator.mediaDevices.getUserMedia({audio:true,video:kind==='video'?{facingMode:'user'}:false});
+  try{
+    return await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},
+      video:kind==='video'?{facingMode:'user',width:{ideal:1280},height:{ideal:720}}:false
+    });
+  }catch(e){
+    if(e?.name==='NotAllowedError'||e?.name==='PermissionDeniedError')throw new Error(kind==='video'?'Allow VERAMOR to use your camera and microphone, then try again.':'Allow VERAMOR to use your microphone, then try again.');
+    if(e?.name==='NotFoundError'||e?.name==='DevicesNotFoundError')throw new Error(kind==='video'?'No usable camera or microphone was found.':'No usable microphone was found.');
+    throw e;
+  }
 }
 function callMarkup(name,kind,status){return `<div class="vera-call-stage ${kind}">
   <div class="vera-call-name"><span class="pill">${kind==='video'?'VIDEO':'VOICE'} CALL</span><h2>${lEsc(name)}</h2><p id="veraCallStatus" class="muted">${lEsc(status)}</p></div>
@@ -85,15 +136,66 @@ function callMarkup(name,kind,status){return `<div class="vera-call-stage ${kind
 function setCallStatus(text){const el=document.getElementById('veraCallStatus');if(el)el.textContent=text}
 async function insertSignal(callId,type,payload){const u=await sessionUser();if(!u)return;const {error}=await liveSb.from('call_signals').insert({call_id:callId,sender_id:u.id,signal_type:type,payload});if(error)throw error}
 async function buildPeer(row,stream,isCaller){
-  const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  const pc=new RTCPeerConnection({
+    iceServers:await getIceServers(),
+    iceCandidatePoolSize:6,
+    bundlePolicy:'max-bundle'
+  });
   const remoteStream=new MediaStream();
   stream.getTracks().forEach(t=>pc.addTrack(t,stream));
-  pc.ontrack=e=>{for(const t of e.streams[0]?.getTracks?.()||[e.track])if(!remoteStream.getTracks().some(x=>x.id===t.id))remoteStream.addTrack(t);const v=document.getElementById('veraRemoteVideo');if(v&&!v.srcObject)v.srcObject=remoteStream};
+  pc.ontrack=e=>{
+    for(const t of e.streams[0]?.getTracks?.()||[e.track]){
+      if(!remoteStream.getTracks().some(x=>x.id===t.id))remoteStream.addTrack(t);
+    }
+    const v=document.getElementById('veraRemoteVideo');
+    if(v){
+      v.srcObject=remoteStream;
+      v.autoplay=true;
+      v.playsInline=true;
+      v.play?.().catch(()=>{});
+    }
+  };
   pc.onicecandidate=e=>{if(e.candidate)insertSignal(row.id,'ice',e.candidate.toJSON()).catch(()=>{})};
-  pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected'){clearTimeout(callState?.ringTimer);setCallStatus('Connected')}if(['failed','disconnected'].includes(pc.connectionState))setCallStatus(pc.connectionState==='failed'?'Connection failed. End this call and try again on another network.':'Reconnecting…')};
-  callState={...(callState||{}),row,pc,stream,remoteStream,isCaller,pendingIce:[],processed:new Set()};
-  const local=document.getElementById('veraLocalVideo');if(local){local.srcObject=stream;local.classList.toggle('hidden',row.kind!=='video')}
+  pc.onconnectionstatechange=()=>{
+    if(!callState||callState.row.id!==row.id)return;
+    if(pc.connectionState==='connected'){
+      clearTimeout(callState.ringTimer);
+      clearTimeout(callState.reconnectTimer);
+      setCallStatus('Connected');
+      return;
+    }
+    if(pc.connectionState==='disconnected'){
+      setCallStatus('Reconnecting…');
+      clearTimeout(callState.reconnectTimer);
+      callState.reconnectTimer=setTimeout(()=>restartCallIce().catch(()=>{}),1800);
+    }else if(pc.connectionState==='failed'){
+      setCallStatus('Reconnecting…');
+      restartCallIce().catch(()=>setCallStatus('Connection failed. End the call and try again.'));
+    }
+  };
+  callState={...(callState||{}),row,pc,stream,remoteStream,isCaller,pendingIce:[],processed:new Set(),restarting:false};
+  const local=document.getElementById('veraLocalVideo');
+  if(local){
+    local.srcObject=stream;
+    local.autoplay=true;
+    local.playsInline=true;
+    local.muted=true;
+    local.classList.toggle('hidden',row.kind!=='video');
+    local.play?.().catch(()=>{});
+  }
   return pc;
+}
+async function restartCallIce(){
+  if(!callState?.pc||!callState.isCaller||callState.restarting)return;
+  callState.restarting=true;
+  try{
+    callState.pc.restartIce?.();
+    const offer=await callState.pc.createOffer({iceRestart:true});
+    await callState.pc.setLocalDescription(offer);
+    await insertSignal(callState.row.id,'offer',offer.toJSON());
+  }finally{
+    if(callState)callState.restarting=false;
+  }
 }
 async function processSignal(sig){
   if(!callState||sig.call_id!==callState.row.id||sig.sender_id===liveUser?.id||callState.processed.has(sig.id))return;
@@ -143,7 +245,7 @@ async function showIncomingCall(row){
   const ms=Math.max(0,new Date(row.expires_at).getTime()-Date.now());setTimeout(()=>{if(document.body.contains(w))dismiss()},Math.min(ms+500,65000));
 }
 async function endCurrentCall(endServer){
-  const c=callState;if(!c){hideLive();return}callState=null;clearTimeout(c.ringTimer);
+  const c=callState;if(!c){hideLive();return}callState=null;clearTimeout(c.ringTimer);clearTimeout(c.reconnectTimer);
   if(endServer)try{await liveSb.rpc('end_veramor_call',{p_call:c.row.id})}catch(_e){}
   try{c.pc?.close()}catch(_e){};c.stream?.getTracks?.().forEach(t=>t.stop());c.remoteStream?.getTracks?.().forEach(t=>t.stop());
   if(c.signalChannel)liveSb.removeChannel(c.signalChannel);if(c.statusChannel)liveSb.removeChannel(c.statusChannel);hideLive();
@@ -156,13 +258,26 @@ async function installIncomingCalls(){
 }
 
 function youtubeId(raw){try{const u=new URL(raw);if(u.hostname==='youtu.be')return u.pathname.split('/').filter(Boolean)[0]?.slice(0,11)||null;if(/(^|\.)youtube\.com$/.test(u.hostname)||/(^|\.)youtube-nocookie\.com$/.test(u.hostname)){if(u.pathname.startsWith('/shorts/')||u.pathname.startsWith('/embed/'))return u.pathname.split('/')[2]?.slice(0,11)||null;return u.searchParams.get('v')?.slice(0,11)||null}}catch(_e){}return /^[A-Za-z0-9_-]{11}$/.test(raw)?raw:null}
-function supportedExternal(raw){try{const u=new URL(raw);if(u.protocol!=='https:')return false;const h=u.hostname.toLowerCase().replace(/^www\./,'');if(h==='amazon.com')return u.pathname.startsWith('/gp/video');return ['netflix.com','play.max.com','max.com','hulu.com','disneyplus.com','primevideo.com','peacocktv.com','paramountplus.com','tubitv.com','pluto.tv','tv.apple.com'].includes(h)}catch(_e){return false}}
+function supportedExternal(raw){
+  try{
+    const u=new URL(raw);
+    if(u.protocol!=='https:')return false;
+    const h=u.hostname.toLowerCase().replace(/^www\./,'');
+    if(h==='amazon.com')return u.pathname.startsWith('/gp/video');
+    return [
+      'netflix.com','play.max.com','max.com','hulu.com','disneyplus.com','primevideo.com',
+      'peacocktv.com','paramountplus.com','tubitv.com','pluto.tv','tv.apple.com',
+      'crunchyroll.com','discoveryplus.com','starz.com','amcplus.com','britbox.com',
+      'mubi.com','criterionchannel.com','plex.tv','vimeo.com','open.spotify.com','music.apple.com'
+    ].includes(h);
+  }catch(_e){return false}
+}
 async function activeWatch(matchId){const {data,error}=await liveSb.from('watch_rooms').select('*').eq('match_id',matchId).eq('status','active').order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)throw error;return data||null}
 async function openWatchLobby(){
   const ctx=await resolveContext();if(!ctx)return liveToast('Open an active match first.','bad');
   const existing=await activeWatch(ctx.match.id).catch(()=>null);if(existing)return openWatchRoom(existing,ctx.otherName);
-  showLive('Watch Together',`<div class="vera-watch-lobby"><div class="vera-movie-mark">🎬</div><h2>Movie night with ${lEsc(ctx.otherName)}</h2><p class="muted">Paste a YouTube link for synchronized playback, or a supported streaming-service link for a shared 3…2…1 start.</p><div class="field"><label>Video or movie link</label><input class="input" id="veraWatchUrl" inputmode="url" placeholder="https://youtu.be/... or your streaming-service link"></div><div class="field"><label>Title <span class="muted">(optional)</span></label><input class="input" id="veraWatchTitle" maxlength="160" placeholder="Tonight’s pick"></div><button class="btn primary full" id="veraStartWatch">Start Watch Together</button><div id="veraWatchMsg"></div><div class="notice">VERAMOR does not copy or rebroadcast movies. For Netflix, Max and similar services, each person uses their own authorized account.</div></div>`);
-  document.getElementById('veraStartWatch').onclick=async()=>{const raw=document.getElementById('veraWatchUrl').value.trim(),title=document.getElementById('veraWatchTitle').value.trim();const yid=youtubeId(raw);const provider=yid?'youtube':'external';if(!yid&&!supportedExternal(raw)){document.getElementById('veraWatchMsg').innerHTML='<div class="notice bad">Use a YouTube, Netflix, Max, Hulu, Disney+, Prime Video, Peacock, Paramount+, Tubi, Pluto TV, or Apple TV link.</div>';return}const b=document.getElementById('veraStartWatch');b.disabled=true;b.textContent='Starting…';try{const {data,error}=await liveSb.rpc('start_watch_together',{p_match:ctx.match.id,p_provider:provider,p_video_id:yid||null,p_source_url:yid?null:raw,p_title:title||null});if(error)throw error;await openWatchRoom(data,ctx.otherName)}catch(e){document.getElementById('veraWatchMsg').innerHTML=`<div class="notice bad">${lEsc(e.message||'Could not start Watch Together.')}</div>`;b.disabled=false;b.textContent='Start Watch Together'}};
+  showLive('Watch / Listen Together',`<div class="vera-watch-lobby"><div class="vera-movie-mark">🎬</div><h2>Watch or listen with ${lEsc(ctx.otherName)}</h2><p class="muted">Paste a YouTube link for synchronized playback, or a supported video/music link for a shared 3…2…1 start.</p><div class="field"><label>Video or movie link</label><input class="input" id="veraWatchUrl" inputmode="url" placeholder="YouTube, Netflix, Spotify, Apple Music, etc."></div><div class="field"><label>Title <span class="muted">(optional)</span></label><input class="input" id="veraWatchTitle" maxlength="160" placeholder="Tonight’s pick"></div><button class="btn primary full" id="veraStartWatch">Start Watch Together</button><div id="veraWatchMsg"></div><div class="notice">VERAMOR does not copy or rebroadcast protected video or music. Each person uses their own authorized account for streaming services.</div></div>`);
+  document.getElementById('veraStartWatch').onclick=async()=>{const raw=document.getElementById('veraWatchUrl').value.trim(),title=document.getElementById('veraWatchTitle').value.trim();const yid=youtubeId(raw);const provider=yid?'youtube':'external';if(!yid&&!supportedExternal(raw)){document.getElementById('veraWatchMsg').innerHTML='<div class="notice bad">Use a supported YouTube/video link, Spotify link, or Apple Music link.</div>';return}const b=document.getElementById('veraStartWatch');b.disabled=true;b.textContent='Starting…';try{const {data,error}=await liveSb.rpc('start_watch_together',{p_match:ctx.match.id,p_provider:provider,p_video_id:yid||null,p_source_url:yid?null:raw,p_title:title||null});if(error)throw error;await openWatchRoom(data,ctx.otherName)}catch(e){document.getElementById('veraWatchMsg').innerHTML=`<div class="notice bad">${lEsc(e.message||'Could not start Watch Together.')}</div>`;b.disabled=false;b.textContent='Start Watch Together'}};
 }
 
 let ytPromise=null;
@@ -177,8 +292,10 @@ async function openWatchRoom(room,otherName='Your match'){
     document.getElementById('veraEndWatch').onclick=()=>closeWatch(true);document.getElementById('veraResync').onclick=()=>applyWatchState(watchState.room,true);
     try{const YT=await loadYouTubeAPI();if(!watchState||watchState.room.id!==room.id)return;watchState.player=new YT.Player('veraYoutubePlayer',{videoId:room.video_id,playerVars:{playsinline:1,rel:0,origin:location.origin},events:{onReady:()=>{applyWatchState(watchState.room,true);startWatchHeartbeat()},onStateChange:e=>youtubeLocalState(e),onError:()=>{const x=document.getElementById('veraWatchStatus');if(x)x.textContent='This YouTube video may not allow embedded playback. Try another video.'}}})}catch(e){const x=document.getElementById('veraWatchStatus');if(x)x.textContent=e.message||'YouTube player could not load.'}
   }else{
-    let host='streaming service';try{host=new URL(room.source_url).hostname.replace(/^www\./,'')}catch(_e){}
-    showLive('Movie Night',`<div class="vera-watch-room external"><div class="vera-movie-mark">🍿</div><span class="pill">MOVIE NIGHT</span><h2>${lEsc(room.title||'Watch together')}</h2><p class="muted">Both of you open ${lEsc(host)} on your own accounts. Then use the synchronized countdown.</p><a class="btn primary full vera-open-stream" href="${lEsc(room.source_url)}" target="_blank" rel="noopener noreferrer">Open ${lEsc(host)}</a><button class="btn full" id="veraCountdown" style="margin-top:9px">Start 3…2…1 countdown</button><div id="veraCountdownDisplay" class="vera-countdown-display"></div><button class="btn danger full" id="veraEndWatch" style="margin-top:9px">End movie night</button><div class="notice">VERAMOR never receives or rebroadcasts the movie stream.</div></div>`);
+    const service=serviceNameFromUrl(room.source_url);
+    const mediaKind=mediaKindFromUrl(room.source_url);
+    const isMusic=mediaKind==='music';
+    showLive(isMusic?'Listen Together':'Movie Night',`<div class="vera-watch-room external"><div class="vera-movie-mark">${isMusic?'🎧':'🍿'}</div><span class="pill">${isMusic?'LISTEN TOGETHER':'MOVIE NIGHT'}</span><h2>${lEsc(room.title||(isMusic?'Listen together':'Watch together'))}</h2><p class="muted">Both of you open ${lEsc(service)} on your own accounts. Then use the synchronized countdown.</p><a class="btn primary full vera-open-stream" href="${lEsc(room.source_url)}" target="_blank" rel="noopener noreferrer">Open ${lEsc(service)}</a><button class="btn full" id="veraCountdown" style="margin-top:9px">Start 3…2…1 countdown</button><div id="veraCountdownDisplay" class="vera-countdown-display"></div><button class="btn danger full" id="veraEndWatch" style="margin-top:9px">End ${isMusic?'listening':'movie night'}</button><div class="notice">VERAMOR syncs the start only; it never receives or rebroadcasts protected media.</div></div>`);
     document.getElementById('veraEndWatch').onclick=()=>closeWatch(true);document.getElementById('veraCountdown').onclick=startExternalCountdown;if(room.playback_state==='countdown')paintCountdown(room.countdown_at);
   }
   await subscribeWatch(room.id);
